@@ -141,6 +141,7 @@ function sendToSlack {
     $verify_exist_vfx = Test-Path -Path $OUTPUT_REPORT_VFX
     $verify_exist_env = Test-Path -Path $OUTPUT_REPORT_ENV
 
+
     if($verify_exist_vfx){
         $report_txt_vfx = Get-Content -Path $OUTPUT_REPORT_VFX -Raw | Out-String 
         New-SlackMessageAttachment -Text "$report_txt_vfx CC: $vfx_producer_slack_user_id"  -Color "#3192DC" -AuthorName "VFX" -Fallback "Hello $vfx_producer_slack_user_id, please help notify these artists about their P4V checked out files." |
@@ -179,10 +180,8 @@ $JSON = Get-Content -Path $PSScriptRoot\userinfo.json -Raw | Out-String | Conver
 $P4PORT="VNSGNSP4ISN:1667"
 $P4USER="thuc.phan"
 $password = "r|1S+'x/rK0u"
-
-# Slack channel webhook address to send message *IMPORTANT* 
-$Uri = "https://hooks.slack.com/services/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"
+# Slack channel webhook address to send message *IMPORTANT*
+$Uri = "https://hooks.slack.com/services/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"
 $vfx_producer_slack_user_id = "<@U07PN0VLVCJ>"
 $env_producer_slack_user_id = "<@U06TZTW93LZ>"
-
 main

@@ -171,17 +171,17 @@ $currentDate = Get-Date
 $formattedDate = $currentDate.ToString("yyMMdd")
 # Server Path
 $OUTPUT = "\\virtuosgames.com\spxprojects\I38\11_Technical\P4V\P4CheckOutReport"
-$OUTPUT_LOG = $OUTPUT + "\check_out_log_server_01_$formattedDate.txt"
-$OUTPUT_REPORT_ENV = $OUTPUT + "\check_out_report_server_01_ENV_$formattedDate.txt"
-$OUTPUT_REPORT_VFX = $OUTPUT + "\check_out_report_server_01_VFX_$formattedDate.txt"
+$OUTPUT_LOG = $OUTPUT + "\check_out_log_server_02_$formattedDate.txt"
+$OUTPUT_REPORT_ENV = $OUTPUT + "\check_out_report_server_02_ENV_$formattedDate.txt"
+$OUTPUT_REPORT_VFX = $OUTPUT + "\check_out_report_server_02_VFX_$formattedDate.txt"
 $JSON = Get-Content -Path $PSScriptRoot\userinfo.json -Raw | Out-String | ConvertFrom-Json
 # P4 account credential
 $P4PORT="SPXP4P-ISN2.virtuosgames.com:16670"
 $P4USER="thuc.phan"
 $password = "r|1S+'x/rK0u"
 
-# Slack channel webhook address to send message *IMPORTANT* 
-$Uri = "https://hooks.slack.com/services/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"
+# Slack channel webhook address to send message *IMPORTANT*
+$Uri = "https://hooks.slack.com/services/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"
 $vfx_producer_slack_user_id = "<@U07PN0VLVCJ>"
 $env_producer_slack_user_id = "<@U06TZTW93LZ>"
 

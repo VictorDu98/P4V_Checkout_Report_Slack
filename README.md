@@ -14,7 +14,7 @@ Info requirement:
 - An autohotkey script that trigger .bat file at certain time
 
 Future update:
-- Convert powershell and bat script into python syntax (WIP in dev 1.0.4)
+- Convert powershell and bat script into python syntax
 - Develop UI
 - Remove hardcoded P4V password on script, and let user input it manually
 - Support cross-projects algorithm

@@ -22,28 +22,32 @@ Clear-Host
 #5. Read contents of checkOutReport_[DEPARTMENT].txt
     #5.1 If exist, send contents to Slack channel
 
-function OutputP4Log {
+function OutputP4Log
+{
 
     $verify_exist = Test-Path -Path $OUTPUT_LOG
-    if($verify_exist){
+    if ($verify_exist)
+    {
         Remove-Item $OUTPUT_LOG
     }
 
     $accounts_name = $JSON.info.AccountName
-    foreach($name in $accounts_name){
-        $i=0
+    foreach ($name in $accounts_name)
+    {
+        $i = 0
         $verify = p4 opened -u $name
-        if($verify){
+        if ($verify)
+        {
             "-------------------------$name----------------------------" | Out-File -FilePath $OUTPUT_LOG -Append -Encoding UTF8
-            p4 opened -u $name | Out-File -FilePath $OUTPUT_LOG -Append -Encoding UTF8
+            p4 opened -u $name | Select-String -Pattern "edit" -SimpleMatch | Out-File -FilePath $OUTPUT_LOG -Append -Encoding UTF8
             " "| Out-File -FilePath $OUTPUT_LOG -Append -Encoding UTF8
-        } 
-        $i+=1
+        }
+        $i += 1
     }
 }
 
 function FilterLogFile {
-    <# 
+    <#
     .SYNOPSIS
         Read each lines of textfile then use regex expression to get workspace name that leave file checked out on P4
     .DESCRIPTION
@@ -54,7 +58,6 @@ function FilterLogFile {
     #>
     $result = [System.Collections.Generic.HashSet[string]]::new()
     $regex= "by\s+(.*?)(\s+\*exclusive\*)?(\s+\*locked\*)?$"
-    $ignore_regex = ".*add.*" 
 
     $verify_empty = Get-Content -Path $OUTPUT_LOG
     if($null -eq $verify_empty){
@@ -63,23 +66,19 @@ function FilterLogFile {
 
     foreach($line in Get-Content -Path $OUTPUT_LOG)
     {
-        $ignore_match = $line -match $ignore_regex 
-        if($ignore_match){
-            #ignore files that is mark for add
-            continue
+        $match= $line -match $regex
+        #Write-Host $match
+        if($match){
+            if($matches[1] -eq $null){
+                continue
+            }
+            $string = $matches[1]
+            #Split string with delimiter "@" and take workspace name by index 1
+            $workspace_name = $string -split "@"
+            $result.Add($workspace_name[1]) | Out-Null
+            }
         }
-        else{
-            $match= $line -match $regex
-            if($match){
-                $string = $matches[1]
-                #Split string with delimiter "@" and take workspace name by index 1 
-                $workspace_name = $string -split "@" 
-                $result.Add($workspace_name[1]) | Out-Null
-                }
-        }
-    }
     return $result
-    
 }
 function findUser{
     param (
@@ -94,10 +93,11 @@ function findUser{
     }
 
     foreach($found_workspace in $result){
+        #Write-Host $found_workspace
         $i=0
         foreach($json_workspace in $json_workspaces){
-            $match = $json_workspace -match $found_workspace
-            if($match){
+            $match = $found_workspace -match $json_workspace
+            if($match -and $json_index -notcontains $i){
                 $json_index+=$i
             }
             $i+=1
@@ -127,19 +127,20 @@ function findUser{
         if($JSON.info.Department[$index] -eq "ENV"){
             $report = $JSON.info.Project[$index] + " - " + $JSON.info.UserName[$index] + " - " + $JSON.info.WorkSpace[$index] + " - " + $JSON.info.Email[$index]
             $report | Out-File -FilePath $OUTPUT_REPORT_ENV -Append -Encoding UTF8
-        } 
+        }
     }
 
     #foreach($index in $json_index){
         #if($JSON.info.Department[$index] -eq "[DEPARTMENT]"){
             #$report = $JSON.info.Project[$index] + " - " + $JSON.info.UserName[$index] + " - " + $JSON.info.WorkSpace[$index] + " - " + $JSON.info.Email[$index]
             #$report | Out-File -FilePath $OUTPUT_REPORT_[DEPARTMENT] -Append -Encoding UTF8
-        #} 
+        #}
     #}
 }
 function sendToSlack {
     $verify_exist_vfx = Test-Path -Path $OUTPUT_REPORT_VFX
     $verify_exist_env = Test-Path -Path $OUTPUT_REPORT_ENV
+
 
     if($verify_exist_vfx){
         $report_txt_vfx = Get-Content -Path $OUTPUT_REPORT_VFX -Raw | Out-String 

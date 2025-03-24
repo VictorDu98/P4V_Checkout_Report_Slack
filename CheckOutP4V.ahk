@@ -5,7 +5,7 @@ Return
 
 RunBatchScript(){
 	currentTime := FormatTime(, "Time")
-	if (currentTime= "1:26 PM"){
+	if (currentTime= "6:16 PM"){
 		RunWait("D:\Powershell_script\I38_P4CheckOutReport\CheckOutP4VServer1.bat")
 		Run("D:\Powershell_script\I38_P4CheckOutReport\CheckOutP4VServer2.bat")
 	}

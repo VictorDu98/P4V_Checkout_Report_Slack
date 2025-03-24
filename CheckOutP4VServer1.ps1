@@ -22,23 +22,27 @@ Clear-Host
 #5. Read contents of checkOutReport_[DEPARTMENT].txt
     #5.1 If exist, send contents to Slack channel
 
-function OutputP4Log {
+function OutputP4Log
+{
 
     $verify_exist = Test-Path -Path $OUTPUT_LOG
-    if($verify_exist){
+    if ($verify_exist)
+    {
         Remove-Item $OUTPUT_LOG
     }
 
     $accounts_name = $JSON.info.AccountName
-    foreach($name in $accounts_name){
-        $i=0
-        $verify = p4 -p $P4PORT -u $P4USER opened -u $name
-        if($verify){
+    foreach ($name in $accounts_name)
+    {
+        $i = 0
+        $verify = p4 opened -u $name
+        if ($verify)
+        {
             "-------------------------$name----------------------------" | Out-File -FilePath $OUTPUT_LOG -Append -Encoding UTF8
-            p4 -p $P4PORT -u $P4USER opened -u $name | Out-File -FilePath $OUTPUT_LOG -Append -Encoding UTF8
+            p4 opened -u $name | Out-File -FilePath $OUTPUT_LOG -Append -Encoding UTF8
             " "| Out-File -FilePath $OUTPUT_LOG -Append -Encoding UTF8
-        } 
-        $i+=1
+        }
+        $i += 1
     }
 }
 
@@ -155,10 +159,7 @@ function sendToSlack {
 
 }
 function main {
-    p4 set P4CONFIG=
-    p4 set P4PORT=$P4PORT
-    p4 set P4USER=$P4USER
-    p4 set P4CHARSET=none
+    p4 set P4CONFIG=$P4CONFIG
     $password | p4 login
     ####
     OutputP4Log
@@ -170,18 +171,22 @@ function main {
 
 $currentDate = Get-Date
 $formattedDate = $currentDate.ToString("yyMMdd")
+
 # Server Path
 $OUTPUT = "\\virtuosgames.com\spxprojects\I38\11_Technical\P4V\P4CheckOutReport"
 $OUTPUT_LOG = $OUTPUT + "\check_out_log_server_01_$formattedDate.txt"
 $OUTPUT_REPORT_ENV = $OUTPUT + "\check_out_report_server_01_ENV_$formattedDate.txt"
 $OUTPUT_REPORT_VFX = $OUTPUT + "\check_out_report_server_01_VFX_$formattedDate.txt"
 $JSON = Get-Content -Path $PSScriptRoot\userinfo.json -Raw | Out-String | ConvertFrom-Json
+
 # P4 account credential
-$P4PORT="VNSGNSP4ISN:1667"
-$P4USER="thuc.phan"
+$P4CONFIG = $PSScriptRoot + "\p4config_server01.txt"
 $password = "r|1S+'x/rK0u"
+
 # Slack channel webhook address to send message *IMPORTANT*
-$Uri = "https://hooks.slack.com/services/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"
+#$Uri = "https://hooks.slack.com/services/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"
+$Uri = "https://hooks.slack.com/services/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"
 $vfx_producer_slack_user_id = "<@U07PN0VLVCJ>"
 $env_producer_slack_user_id = "<@U06TZTW93LZ>"
+
 main

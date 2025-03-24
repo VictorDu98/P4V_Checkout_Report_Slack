@@ -1,0 +1,3 @@
+P4PORT=SPXP4P-ISN2.virtuosgames.com:16670
+P4USER=thuc.phan
+P4CHARSET=none

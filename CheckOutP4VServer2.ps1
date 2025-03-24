@@ -180,8 +180,8 @@ $P4CONFIG = $PSScriptRoot + "\p4config_server02.txt"
 $password = "r|1S+'x/rK0u"
 
 # Slack channel webhook address to send message *IMPORTANT*
-#$Uri = "https://hooks.slack.com/services/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"
-$Uri = "https://hooks.slack.com/services/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"
+$Uri = "https://hooks.slack.com/services/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"
+#$Uri = "https://hooks.slack.com/services/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"
 $vfx_producer_slack_user_id = "<@U07PN0VLVCJ>"
 $env_producer_slack_user_id = "<@U06TZTW93LZ>"
 

@@ -58,14 +58,6 @@
             "WorkSpace":"duong.nguyen_a_vietw523_i38"
         },
         {
-            "UserName": "user_review 1068",
-            "AccountName": "duong.nguyen_a",
-            "Project":"I38",
-            "Department":"ENV",
-            "Email": "duong.nguyen_a@virtuos-sparx.com",
-            "WorkSpace":"duong.nguyen_a_spxw0991_i38"
-        },
-        {
             "UserName": "Nguyen Trong Quy",
             "AccountName": "quy.nguyen",
             "Project":"I38",
@@ -129,6 +121,14 @@
             "Email": "hung.nguyen_e@virtuos-sparx.com",
             "WorkSpace":"hung.nguyen_e_VNSPXW0954_i38"
         },
+		{
+            "UserName": "Le Huu Luan",
+            "AccountName": "hung.nguyen_e",
+            "Project":"I38",
+            "Department":"VFX",
+            "Email": "luan.le@virtuos-sparx.com",
+            "WorkSpace":"luan.le_VNSPXW0780_i38"
+        },
         {
             "UserName": "Nguyen Thi Thao Nguyen",
             "AccountName": "nguyen.nguyen_b",
@@ -154,14 +154,6 @@
             "WorkSpace":"anh.truong_vnspxw0660_i40"
         },
         {
-            "UserName": "Truong Thi Duyen Anh",
-            "AccountName": "anh.truong",
-            "Project":"I38",
-            "Department":"VFX",
-            "Email": "anh.truong@virtuos-sparx.com",
-            "WorkSpace":"anh.truong_vnspxw0660_i38"
-        },
-        {
             "UserName": "Kim Hai Au",
             "AccountName": "haiau",
             "Project":"I38",
@@ -183,7 +175,7 @@
             "Project":"I38",
             "Department":"ENV",
             "Email": "duchung@virtuos-sparx.com",
-            "WorkSpace":"duchung_vietw616_i38"
+            "WorkSpace":"duchung_vnspxw1089_i38"
         },
         {
             "UserName": "Huynh Phi Yen",
@@ -218,22 +210,6 @@
             "WorkSpace":"nhon.nguyen_spxw0985_i38"
         },
         {
-            "UserName": "Nguyen Ngoc Kim Phung",
-            "AccountName": "phung.nguyen_b",
-            "Project":"I38",
-            "Department":"ENV",
-            "Email": "phung.nguyen_b@virtuos-sparx.com",
-            "WorkSpace":"phung.nguyen_b_vietw590_i33_i30"
-        },
-        {
-            "UserName": "Nguyen Quoc Anh",
-            "AccountName": "anh.nguyen_f",
-            "Project":"I38",
-            "Department":"ENV",
-            "Email": "anh.nguyen_f@virtuos-sparx.com",
-            "WorkSpace":"anh.nguyen_f_vietw724_i38"
-        },
-        {
             "UserName": "Nguyen Thach Lam Vy",
             "AccountName": "lamvy",
             "Project":"I38",
@@ -264,14 +240,6 @@
             "Department":"ENV",
             "Email": "khoa.pham_a@virtuos-sparx.com",
             "WorkSpace":"khoa.pham_a_vnspxw1058_i38"
-        },
-        {
-            "UserName": "Pham Tran Thanh Nam",
-            "AccountName": "nam.pham",
-            "Project":"I38",
-            "Department":"ENV",
-            "Email": "nam.pham@virtuos-sparx.com",
-            "WorkSpace":"nam.pham_vietw702_i38"
         },
         {
             "UserName": "Tran Quoc Hieu",

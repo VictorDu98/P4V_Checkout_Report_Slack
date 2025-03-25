@@ -22,9 +22,7 @@ Clear-Host
 #5. Read contents of checkOutReport_[DEPARTMENT].txt
     #5.1 If exist, send contents to Slack channel
 
-function OutputP4Log
-{
-
+function OutputP4Log {
     $verify_exist = Test-Path -Path $OUTPUT_LOG
     if ($verify_exist)
     {
@@ -45,7 +43,6 @@ function OutputP4Log
         $i += 1
     }
 }
-
 function FilterLogFile {
     <#
     .SYNOPSIS
@@ -81,17 +78,21 @@ function FilterLogFile {
     return $result
 }
 function findUser{
-    param (
-        $output
-    )
-
     $result = FilterLogFile
     $json_workspaces = $JSON.info.WorkSpace
     $json_index= @()
+
+    if(Test-Path -Path $OUTPUT_REPORT_ENV){
+        Write-Host $OUTPUT_REPORT_ENV
+        Remove-Item $OUTPUT_REPORT_ENV
+    }
+    if(Test-Path -Path $OUTPUT_REPORT_VFX){
+        Write-Host $OUTPUT_REPORT_VFX
+        Remove-Item $OUTPUT_REPORT_VFX
+    }
     if($null -eq $result){
         return $null
     }
-
     foreach($found_workspace in $result){
         #Write-Host $found_workspace
         $i=0
@@ -103,18 +104,6 @@ function findUser{
             $i+=1
         }
     }
-    # Add more department if you wanted to expand
-    # Requires userInfo.json have been updated with new set of data
-
-    if(Test-Path -Path $OUTPUT_REPORT_ENV){
-        Remove-Item $OUTPUT_REPORT_ENV
-    }
-    if(Test-Path -Path $OUTPUT_REPORT_VFX){
-        Remove-Item $OUTPUT_REPORT_VFX
-    }
-    #if(Test-Path -Path $OUTPUT\checkOutReport_[DEPARTMENT].txt){
-        #Remove-Item $OUTPUT_REPORT_[DEPARTMENT].txt
-    #}
 
     foreach($index in $json_index){
         if($JSON.info.Department[$index] -eq "VFX"){
@@ -141,18 +130,21 @@ function sendToSlack {
     $verify_exist_vfx = Test-Path -Path $OUTPUT_REPORT_VFX
     $verify_exist_env = Test-Path -Path $OUTPUT_REPORT_ENV
 
-
     if($verify_exist_vfx){
-        $report_txt_vfx = Get-Content -Path $OUTPUT_REPORT_VFX -Raw | Out-String 
+        Write-Host "Found $OUTPUT_REPORT_VFX"
+        $report_txt_vfx = Get-Content -Path $OUTPUT_REPORT_VFX -Raw | Out-String
         New-SlackMessageAttachment -Text "$report_txt_vfx CC: $vfx_producer_slack_user_id"  -Color "#3192DC" -AuthorName "VFX" -Fallback "Hello $vfx_producer_slack_user_id, please help notify these artists about their P4V checked out files." |
         New-SlackMessage | Send-SlackMessage -Uri $Uri
+        return
     }
     if($verify_exist_env){
-        $report_txt_env = Get-Content -Path $OUTPUT_REPORT_ENV -Raw | Out-String 
+        Write-Host "Found $OUTPUT_REPORT_ENV"
+        $report_txt_env = Get-Content -Path $OUTPUT_REPORT_ENV -Raw | Out-String
         New-SlackMessageAttachment -Text "$report_txt_env CC: $env_producer_slack_user_id" -Color "#2F783B" -AuthorName "ENV" -Fallback "Hello $env_producer_slack_user_id, please help notify these artists about their P4V checked out files." |
         New-SlackMessage | Send-SlackMessage -Uri $Uri
+        return
     }
-
+    Write-Host "No one checked out files to report"
 }
 function main {
     p4 set P4CONFIG=$P4CONFIG

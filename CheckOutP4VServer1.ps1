@@ -135,23 +135,20 @@ function sendToSlack {
         $report_txt_vfx = Get-Content -Path $OUTPUT_REPORT_VFX -Raw | Out-String
         New-SlackMessageAttachment -Text "$report_txt_vfx CC: $vfx_producer_slack_user_id"  -Color "#3192DC" -AuthorName "VFX" -Fallback "Hello $vfx_producer_slack_user_id, please help notify these artists about their P4V checked out files." |
         New-SlackMessage | Send-SlackMessage -Uri $Uri
-        return
     }
     if($verify_exist_env){
         Write-Host "Found $OUTPUT_REPORT_ENV"
         $report_txt_env = Get-Content -Path $OUTPUT_REPORT_ENV -Raw | Out-String
         New-SlackMessageAttachment -Text "$report_txt_env CC: $env_producer_slack_user_id" -Color "#2F783B" -AuthorName "ENV" -Fallback "Hello $env_producer_slack_user_id, please help notify these artists about their P4V checked out files." |
         New-SlackMessage | Send-SlackMessage -Uri $Uri
-        return
     }
-    Write-Host "No one checked out files to report"
 }
 function main {
     p4 set P4CONFIG=$P4CONFIG
     $password | p4 login
     ####
     OutputP4Log
-    findUser -output $OUTPUT
+    findUser
     sendToSlack
     ####
 }

@@ -304,6 +304,22 @@
             "Department":"ENV",
             "Email": "dat.bui@virtuos-sparx.com",
             "WorkSpace":"dat.bui_vietw672_i38"
+        },
+        {
+            "UserName": "Nguyen Tan Dat",
+            "AccountName": "duchung",
+            "Project":"I38",
+            "Department":"ENV",
+            "Email": "dat.nguyen_a@virtuos-sparx.com",
+            "WorkSpace":"dat.nguyen_c_vnspxw1111_i38"
+        },
+        {
+            "UserName": "Tran Duc Duy",
+            "AccountName": "duchung",
+            "Project":"I38",
+            "Department":"ENV",
+            "Email": "duy.tran_c@virtuos-sparx.com",
+            "WorkSpace":"duy.tran_c_vnspxw1104_i38"
         }
     ]
 }

@@ -320,6 +320,14 @@
             "Department":"ENV",
             "Email": "duy.tran_c@virtuos-sparx.com",
             "WorkSpace":"duy.tran_c_vnspxw1104_i38"
+        },
+        {
+            "UserName": "Tran Thien Bao",
+            "AccountName": "thuc.phanm",
+            "Project":"I38",
+            "Department":"ENV",
+            "Email": "bao.tran@virtuos-sparx.com",
+            "WorkSpace":"bao.tran_vnspxw0937_i38"
         }
     ]
 }

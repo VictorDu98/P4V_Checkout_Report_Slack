@@ -1,10 +1,3 @@
-Software requirement:
-- Window batch 
-- Window Powershell version atleast 5.1.22621.4391
-- Autohotkey v2 https://www.autohotkey.com/
-- install PSSlack module for Powershell https://www.powershellgallery.com/packages/PSSlack/1.0.6
-
-
 Info requirement:
 - Specify output address for text file (Lookup CheckOutP4V.ps1 variable $OUTPUT)
 - A P4V account (with password)
@@ -18,3 +11,23 @@ Future update:
 - Develop UI
 - Remove hardcoded P4V password on script, and let user input it manually
 - Support cross-projects algorithm
+
+
+Installation:
+1. First, cd terminal into your root directory
+
+2. Make new virtual env
+```
+python -m venv venv 
+```
+
+3. Activate venv
+```
+venv\Scripts\activate
+```
+
+4. Install dependencies
+
+```
+pip install -r requirements.txt  
+```

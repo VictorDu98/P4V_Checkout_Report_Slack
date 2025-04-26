@@ -6,11 +6,14 @@ target_time = "15:06"
 TOTAL_TASK=0
 
 class Task:
-    def __init__(self,name,order):
-        self.task_name = name
+    def __init__(self, task_name, order, p4_port,
+                 p4_user, p4_charset, p4_client):
+        self.task_name = task_name
         self.task_order = order
-        self.target_hour = 0
-        self.target_minute = 0
+        self.P4PORT = p4_port
+        self.P4USER = p4_user
+        self.P4CHARSET= p4_charset
+        self.P4CLIENT = p4_client
         self.createConfig()
 
     def __del__(self):
@@ -23,15 +26,19 @@ class Task:
         #return 0-1
         pass
 
-    def to_dict(self):
-        return {key: value for key, value in self.__dict__.items()}
-
     def createConfig(self):
-        filename = f"{self.task_name}.txt"
-        with open(filename, 'w') as f:
-            for key, value in self.to_dict().items():
-                f.write(f"{key}: {value}\n")
+        filename = f".p4config_{self.task_name}.txt"
+        with open(filename, 'w') as file:
+            config = f"""
+P4PORT={self.P4PORT}
+P4USER={self.P4USER}
+P4CLIENT={self.P4CLIENT}
+P4CHARSET={self.P4CHARSET}
+P4CONFIG=            
+            """
+            file.write(config)
 
-
-
-
+    def useConfig(self,task_name):
+        #from P4 import P4, P4Exception
+        #p4.config=task_name
+        pass

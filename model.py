@@ -49,9 +49,11 @@ class Task:
             with open(log, 'w') as file:
                 file.write("log")
 
-        create_p4config()
-        create_users_list()
-        create_log()
+        #Execute all functions inside this method
+        for name, func in locals().items():
+            if callable(func):
+                func()
+
 
     def remove_preset(self):
         if os.path.exists(self.task_name):

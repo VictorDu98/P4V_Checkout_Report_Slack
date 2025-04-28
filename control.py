@@ -17,15 +17,21 @@ class schedule():
                 subprocess.run(fr"D:\tools\P4V_Checkout_Report_Slack\slack.py")
             time.sleep(60)
 
-    def addTask(self,name,order):
+    def addTask(self,name):
         # accept user task_name
         # accept user .p4config
         # accept user target_time
         # formulate a list
         # create object
         # assign task to view
-        task = model.Task(name,order)
-        self.tasks.append((task))
+        task = model.Task(
+            task_name=name,
+            order=1,
+            p4_port="someport",
+            p4_user="someuser",
+            p4_client="someclient",
+            p4_charset="none")
+        self.tasks.append(task)
         self.refreshView()
         return task
 
@@ -61,6 +67,6 @@ class schedule():
 
 
 app = schedule()
-app.addTask(name="test",order=1)
+app.addTask(name="GFH")
 #time.sleep(5)
-#app.removeTask(task="test")
+#app.removeTask(task="GFH")

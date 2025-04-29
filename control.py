@@ -7,66 +7,63 @@ class schedule():
         self.tasks= []
 
 
-    def queueTask(self):
+    def queue_task(self,target_time):
         # accept signal clicked
         # get order from model
         # set current task order number
-        while True:
+        # get user input target_time
+        '''while True:
             current_time = time.strftime("%H:%M")
             if current_time == target_time:
                 subprocess.run(fr"D:\tools\P4V_Checkout_Report_Slack\slack.py")
-            time.sleep(60)
+            time.sleep(60)'''
 
-    def addTask(self,name):
-        # accept user task_name
-        # accept user .p4config
-        # accept user target_time
-        # formulate a list
-        # create object
-        # assign task to view
-        task = model.Task(
+    def add_task(self,name):
+        # find preset with name
+            # accept user input P4 env
+            # accept user input  target_time to trigger Task
+            #Q
+            #
+        # if not exist then create new preset
+             # create object based on View input
+        task = model.Preset(
             task_name=name,
             order=1,
             p4_port="someport",
             p4_user="someuser",
             p4_client="someclient",
             p4_charset="none")
-        self.tasks.append(task)
-        self.refreshView()
-        return task
 
-    def refreshView(self):
-        # update list
+        self.tasks.append(task)
+        # assign task to view
+        #self.refresh_view()
+        return self.tasks
+
+
+    def refresh_view(self):
+        # update view list
         pass
-    def executeTask(self):
+    def execute_task(self):
         # accept signal button clicked
         # run task
         pass
 
-    def statusTask(self):
+    def status_task(self):
         # update status of task
         # 0= disabled, 1= failed, 2=success
         pass
 
-    def removeTask(self,task):
-
+    def remove_task(self,task):
         # accept singal button clicked
         # prompt user yes/no
-        # find task id
+        ans= input("Are you ")
+        print(ans)
+        # find task name
             # stop subprocess of task
-        # del object
-        for obj in self.tasks:
-            print(obj.task_name)
-            if obj.task_name == task:
-                self.tasks.remove(obj)
-            if os.path.exists(f"{obj.task_name}.txt"):
-                os.remove(f"{obj.task_name}.txt")
-                print(f"Deleted file: {obj.task_name}")
-
-        self.refreshView()
+        model.Preset.remove_preset(preset=task)
+        #self.refreshView()
 
 
 app = schedule()
-app.addTask(name="GFH")
-#time.sleep(5)
-#app.removeTask(task="GFH")
+app.add_task(name="GFH")
+#app.remove_task(task="GFH")

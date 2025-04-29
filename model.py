@@ -1,13 +1,15 @@
 import time
 import os
 import subprocess
+import shutil
 target_time = "15:06"
 
 TOTAL_TASK=0
 ROOT_DIR= os.path.dirname(os.path.realpath(__file__))
 PRESET_DIR= os.path.join(ROOT_DIR,"presets")
 
-class Task:
+class Preset:
+
     def __init__(self, task_name, order, p4_port,
                  p4_user, p4_charset, p4_client):
         self.task_name = task_name
@@ -16,9 +18,13 @@ class Task:
         self.P4USER = p4_user
         self.P4CHARSET= p4_charset
         self.P4CLIENT = p4_client
-        os.makedirs(f"presets/{self.task_name}",exist_ok=True)
         self.preset_root= os.path.join(PRESET_DIR,f"{self.task_name}")
+        os.makedirs(self.preset_root,exist_ok=True)
         self.create_preset()
+        print(f"Created preset: {self.task_name}")
+
+    def __str__(self):
+        return self.task_name
 
     def run_task(self):
         #execute
@@ -54,11 +60,13 @@ class Task:
             if callable(func):
                 func()
 
-
-    def remove_preset(self):
-        if os.path.exists(self.task_name):
-            os.removedirs(self.task_name)
-            print(f"Deleted preset: {self.task_name}")
+    @classmethod
+    def remove_preset(cls,preset):
+        preset_path = os.path.join(PRESET_DIR,f"{preset}")
+        if os.path.exists(preset_path):
+            # remove if exists
+            shutil.rmtree(preset_path)
+            print(f"Deleted preset: {preset}")
 
     def use_config(self,task_name):
         #from P4 import P4, P4Exception

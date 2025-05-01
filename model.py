@@ -11,18 +11,16 @@ ROOT_DIR= os.path.dirname(os.path.realpath(__file__))
 PRESET_DIR= os.path.join(ROOT_DIR,"presets")
 
 class Preset:
-    def __init__(self, task_name, order):
-        self.task_name = task_name
-        self.task_order = order
-        self.preset_root= os.path.join(PRESET_DIR,f"{self.task_name}")
-        os.makedirs(self.preset_root,exist_ok=True)
-        print(f"Created preset: {self.task_name}")
+    def __init__(self, name, order):
+        self.name = name
+        self.order = order
+        self.preset_root = os.path.join(PRESET_DIR,name)
 
     def __str__(self):
-        return self.task_name
+        return self.name
 
     def run_task(self):
-        slack_send(uri)
+        #slack_send(uri)
         #return 0-1
         pass
 
@@ -32,27 +30,52 @@ class Preset:
         pass
 
 
-    def create_p4config(self,port,user,client,charset):
-        p4_config = os.path.join(self.preset_root, f".p4config_{self.task_name}.txt")
-        config = create_p4config(port, user, client, charset)
-        with open(p4_config, 'w') as file:
+    def create_p4config(self,port :str,user:str,client :str,charset :str):
+        config_root = os.path.join(self.preset_root, f".p4config_{self.name}.txt")
+        config = f"""
+        P4PORT={port}
+        P4USER={user}
+        P4CLIENT={client}
+        P4CHARSET={charset}
+        P4CONFIG="""
+
+        with open(config_root, 'w') as file:
             file.write(config)
 
     def create_users_list(self):
-        users_list = os.path.join(self.preset_root, f"users_{self.task_name}.json")
-        dic = create_users_template()
+        users_list = os.path.join(self.preset_root, f"users_{self.name}.json")
+        dic = {
+            "info":
+                [
+                    {
+                        "UserName": "Artist real name",
+                        "AccountName": "Artist P4V account name",
+                        "Project": "Project name",
+                        "Department": "ENV/VFX/LIGHTING/RIGGING/CHARACTER/...",
+                        "Email": "Artist email",
+                        "WorkSpace": "Artist P4V workspace name"
+                    }
+                ]
+        }
         with open(users_list, 'w') as file:
             file.write(json.dumps(dic, indent=4))
 
-    def create_log(self):
-        log = os.path.join(self.preset_root, f"log_{self.task_name}.txt")
-        with open(log, 'w') as file:
-            file.write("log")
+    @classmethod
+    def create_preset(cls,preset_name):
+        preset_root= os.path.join(PRESET_DIR,f"{preset_name}")
+        os.makedirs(preset_root,exist_ok=True)
+        print(f"Created preset: {preset_name}")
 
+    @classmethod
+    def remove_preset(cls,preset):
+        preset_path = os.path.join(PRESET_DIR, f"{preset}")
+        if os.path.exists(preset_path):
+            shutil.rmtree(preset_path)
+            print(f"Deleted preset: {preset}")
 
 def slack_send(webhook,producer_id):
     # Define the webhook URL provided by Slack
-    webhook_url = "https://hooks.slack.com/services/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"
+    webhook_url = webhook
 
     # Define the message payload
     payload = {
@@ -79,35 +102,3 @@ def slack_send(webhook,producer_id):
         print(f"Failed to send message: {response.status_code}, {response.text}")
 
 
-def create_users_template() -> dict:
-    dic = {
-        "info":
-            [
-                {
-                    "UserName": "Artist real name",
-                    "AccountName": "Artist P4V account name",
-                    "Project": "Project name",
-                    "Department": "ENV/VFX/LIGHTING/RIGGING/CHARACTER/...",
-                    "Email": "Artist email",
-                    "WorkSpace": "Artist P4V workspace name"
-                }
-            ]
-    }
-    return dic
-
-def create_p4config(port:str,user:str,client:str,charset:str) ->str:
-    config = f"""
-    P4PORT={port}
-    P4USER={user}
-    P4CLIENT={client}
-    P4CHARSET={charset}
-    P4CONFIG="""
-    return config
-
-
-def remove_preset(preset):
-    preset_path = os.path.join(PRESET_DIR,f"{preset}")
-    if os.path.exists(preset_path):
-        # remove if exists
-        shutil.rmtree(preset_path)
-        print(f"Deleted preset: {preset}")

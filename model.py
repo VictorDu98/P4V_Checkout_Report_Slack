@@ -4,6 +4,7 @@ import subprocess
 import shutil
 import requests
 import json
+import re
 target_time = "15:06"
 
 TOTAL_TASK=0
@@ -18,6 +19,7 @@ class Preset:
 
     def __str__(self):
         return self.name
+
 
     def run_task(self):
         #slack_send(uri)
@@ -102,3 +104,86 @@ def slack_send(webhook,producer_id):
         print(f"Failed to send message: {response.status_code}, {response.text}")
 
 
+class PerforceWorkspaceReport:
+    def __init__(self, p4_config):
+        self.p4_config = p4_config
+        self.producer_id = str()
+
+    def login(self):
+        from P4 import P4, P4Exception
+        p4 = P4()
+        p4.config = self.p4_config
+
+        try:  # Catch exceptions with try/except
+            p4.connect()  # Connect to the Perforce server
+            info = p4.run("info")  # Run "p4 info" (returns a dict)
+            for key in info[0]:  # and display all key-value pairs
+                print(key, "=", info[0][key])
+
+        except P4Exception:
+            for e in p4.errors:  # Display errors
+                print(e)
+
+    def add_producer(self,slack_id):
+        self.producer_id = slack_id
+
+
+def regex_filter(string_list:list)-> set:
+    pattern= "by\s+(.*?)(\s+\*exclusive\*)?(\s+\*locked\*)?$"
+    ignore_mark_for_add = ".*add.*"
+    workspaces=set()
+    for string in string_list:
+        if re.match(ignore_mark_for_add, string):
+            continue
+        else:
+            if re.match(pattern, string):
+                # Split string with delimiter "@" and take workspace name by index 1
+                workspace_name = string.split("@")[1]
+                workspaces.add(workspace_name)
+
+    return workspaces
+
+
+def del_text_file(file_full_path):
+    # Remove old report files if they exist
+    if os.path.exists(file_full_path):
+        os.remove(file_full_path)
+
+def generate_report(indexes:list):
+    # Process VFX department reports
+    for index in indexes:
+        if JSON['info']['Department'][index] == "VFX":
+            report = (f"{JSON['info']['Project'][index]} - {JSON['info']['UserName'][index]} - "
+                      f"{JSON['info']['WorkSpace'][index]} - {JSON['info']['Email'][index]}")
+            with open(OUTPUT_REPORT_VFX, 'a', encoding='utf-8') as f:
+                f.write(report + "\n")
+
+def find_user():
+    # Assume FilterLogFile() is defined elsewhere and returns a list of found workspaces.
+    result = regex_filter()
+    json_workspaces = JSON['info']['WorkSpace']
+    json_index = []
+
+    if result is None:
+        return None
+
+    for found_workspace in result:
+        for i, json_workspace in enumerate(json_workspaces):
+            if re.search(found_workspace, json_workspace):
+                json_index.append(i)
+
+    # Process VFX department reports
+    for index in json_index:
+        if JSON['info']['Department'][index] == "VFX":
+            report = (f"{JSON['info']['Project'][index]} - {JSON['info']['UserName'][index]} - "
+                      f"{JSON['info']['WorkSpace'][index]} - {JSON['info']['Email'][index]}")
+            with open(OUTPUT_REPORT_VFX, 'a', encoding='utf-8') as f:
+                f.write(report + "\n")
+
+    # Process ENV department reports
+    for index in json_index:
+        if JSON['info']['Department'][index] == "ENV":
+            report = (f"{JSON['info']['Project'][index]} - {JSON['info']['UserName'][index]} - "
+                      f"{JSON['info']['WorkSpace'][index]} - {JSON['info']['Email'][index]}")
+            with open(OUTPUT_REPORT_ENV, 'a', encoding='utf-8') as f:
+                f.write(report + "\n")

@@ -20,17 +20,17 @@ class Preset:
     def __init__(self, name):
         self.name = name
         self.preset_root = os.path.join(PRESET_DIR, name)
-        self.preset_config = os.path.join(self.preset_root, f"config_{self.name}.json")
-        self.perforce_config = os.path.join(self.preset_root, f".p4config_{self.name}.txt")
+        self.preset_config = os.path.join(self.preset_root, "config.json")
+        self.perforce_config = os.path.join(self.preset_root, ".p4config")
 
         if not os.path.exists(self.preset_root):
             os.makedirs(self.preset_root, exist_ok=True)
             self.create_template()
 
         JSON = self.open_json()
-        self.output_path = JSON["misc"]["Address"]
-        self.slack_uri = JSON["misc"]["Slack"]
-        self.producer_slack_id = JSON["misc"]["Producer"]
+        self.output_path = JSON["misc"][0]["Address"]
+        self.slack_uri = JSON["misc"][0]["Slack"]
+        self.producer_slack_id = JSON["misc"][0]["Producer"]
         self.output_log = None
         self.output_report = None
 
@@ -103,9 +103,7 @@ class Preset:
         if not self.check_exist(self.preset_config):
             raise FileNotFoundError(f"File {self.preset_config} does not exist.")
         f = open(self.preset_config, "r", encoding="utf-8")
-        data = json.load(f)
-        f.close()
-        return data
+        return json.load(f)
 
     def generate_log(self):
         """
@@ -116,10 +114,10 @@ class Preset:
         //depot/scripts/script.py#2 - edit - CL 12347 - bob_ws
         """
         JSON= self.open_json()
-        accounts_name = JSON["info"]["AccountName"]
+        accounts_name = JSON["info"][0]["AccountName"]
 
-        if not self.check_exist(self.perforce_config):
-            raise FileNotFoundError(f"File {self.perforce_config} does not exist.")
+        #if not self.check_exist(self.perforce_config):
+            #raise FileNotFoundError(f"File {self.perforce_config} does not exist.")
 
         self.output_log = os.path.join(self.output_path,"logs", f"log_{formatted_date}.txt")
         if self.check_exist(self.output_log):
@@ -127,7 +125,6 @@ class Preset:
 
         p4 = P4()
         try:
-            p4.p4config_file = self.perforce_config
             p4.connect()  # Connect to the Perforce server
         except P4Exception as e:
             for e in p4.errors:  # Display errors
@@ -173,7 +170,7 @@ class Preset:
 
     def trace_user(self):
         JSON = self.open_json()
-        json_workspaces = JSON['info']['WorkSpace']
+        json_workspaces = JSON['info'][0]['WorkSpace']
         users_index = []
         with open(self.output_log, "r", encoding="utf-8") as f:
             contents = [line.strip() for line in f] #quick fix to remove all \n in string
@@ -197,8 +194,12 @@ class Preset:
         # Read and parse the JSON file
         JSON = self.open_json()
         for user in users_index:
-            if JSON['info']['Department'][user] == department:
-                report = f"{JSON['info']['Project'][user]} - {JSON['info']['UserName'][user]} - {JSON['info']['WorkSpace'][user]} - {JSON['info']['Email'][user]}"
+            if JSON['info'][0]['Department'][user] == department:
+                report = f"{JSON['info'][0]['Project'][user]} - {JSON['info'][0]['UserName'][user]} - {JSON['info'][0]['WorkSpace'][user]} - {JSON['info'][0]['Email'][user]}"
                 with open(self.output_report, 'a', encoding='utf-8') as f:
                     f.write(report + "\n")
 
+
+if __name__ == "__main__":
+    object = Preset("GFH")
+    print(object.slack_uri)

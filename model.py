@@ -1,6 +1,4 @@
-import time
 import os
-import subprocess
 import shutil
 import requests
 import json
@@ -12,11 +10,13 @@ formatted_date = datetime.now().strftime("%y%m%d")
 
 target_time = "15:06"
 
-TOTAL_TASK=0
 ROOT_DIR= os.path.dirname(os.path.realpath(__file__))
 PRESET_DIR= os.path.join(ROOT_DIR,"presets")
 
 class Preset:
+    """
+    GENERATE LOG - > TRACE WORKSPACE  -> TRACE USER -> WRITE REPORT
+    """
     def __init__(self, name):
         self.name = name
         self.preset_root = os.path.join(PRESET_DIR, name)
@@ -39,10 +39,7 @@ class Preset:
 
     @staticmethod
     def check_exist(path):
-        if os.path.exists(path):
-            return True
-        else:
-            return False
+        return os.path.exists(path)
 
     def create_template(self):
         dic = {
@@ -110,32 +107,14 @@ class Preset:
         f.close()
         return data
 
-    @staticmethod
-    def filter_log(string_list:list)-> set:
-        """
-        Log file output string that always come with user@workspace in each line.\n
-        Use regex expression to match "mark for add" files and files that have the status of "exclusive checkout"\n
-        Lines of text that matched regex will be returned in a set array\n
-        Lines of text that fit in ignore case will be ignored since the file itself it's not on depot yet
-
-        :param string_list: string line
-        :return: workspace name list that matches regex expression
-        """
-        pattern= r"by\s+(.*?)(\s+\*exclusive\*)?(\s+\*locked\*)?$"
-        ignore_mark_for_add = r".*add.*"
-        workspaces=set()
-        for string in string_list:
-            if re.match(ignore_mark_for_add, string):
-                continue
-            else:
-                if re.match(pattern, string):
-                    # Split string with delimiter "@" and take workspace name by index 1
-                    workspace_name = string.split("@")[1]
-                    workspaces.add(workspace_name)
-
-        return workspaces
-
     def generate_log(self):
+        """
+        ------------------------- alice ----------------------------
+        //depot/project/file1.cpp#5 - edit - CL 12345 - alice_workspace
+
+        ------------------------- bob ----------------------------
+        //depot/scripts/script.py#2 - edit - CL 12347 - bob_ws
+        """
         JSON= self.open_json()
         accounts_name = JSON["info"]["AccountName"]
 
@@ -143,60 +122,83 @@ class Preset:
             raise FileNotFoundError(f"File {self.perforce_config} does not exist.")
 
         self.output_log = os.path.join(self.output_path,"logs", f"log_{formatted_date}.txt")
-
         if self.check_exist(self.output_log):
             os.remove(self.output_log)
 
-        try:  # Catch exceptions with try/except
-            p4 = P4()
+        p4 = P4()
+        try:
             p4.p4config_file = self.perforce_config
-
             p4.connect()  # Connect to the Perforce server
-            p4.run_login()
-        except P4Exception:
+        except P4Exception as e:
             for e in p4.errors:  # Display errors
                 raise e
 
         for name in accounts_name:
             # Run the `p4 opened -u <user>` command
-            opened_files = p4.run_opened("-u", name)
+            found_files = p4.run_opened("-u", name)
+            if not found_files:
+                continue
+            with open(self.output_log, 'a', encoding='utf-8') as f:
+                f.write(f"------------------------- {name} ----------------------------\n")
+                for file in found_files:
+                    if file.get("action") == "edit":
+                        depot_file = file.get("depotFile", "unknown")
+                        changelist = file.get("change", "unknown")
+                        client = file.get("client", "unknown")
+                        f.write(f"{depot_file} - edit - CL {changelist} - {client}\n")
+                f.write("\n")
+        p4.disconnect()
 
-            if opened_files:
-                with open(self.output_log, 'a', encoding='utf-8') as f:
-                    f.write(f"-------------------------{name}----------------------------\n")
-                    # Only write lines that contain the word "edit"
-                    for line in output.splitlines():
-                        if "edit" in line:
-                            f.write(line + "\n")
-                    f.write("\n")
+    @staticmethod
+    def trace_workspace(string_list: list) -> set:
+        """
+        Use regex expression to match lines that include "edit"
+        and extract the workspace names.
 
-    def filter_user(self):
-        # Assume FilterLogFile() is defined elsewhere and returns a list of found workspaces.
-        result = self.filter_log()
+        :param string_list: Lines from a log file.
+        :return: A set of workspace names that matched.
+        """
+        pattern = re.compile(r"^.+ - edit - CL (\d+|default) - ([A-Za-z0-9_]+)$")
+
+        workspaces = set()
+
+        for line in string_list:
+            match = pattern.match(line.strip())
+            if match:
+                workspace_name = match.group(2)
+                workspaces.add(workspace_name)
+
+        return workspaces
+
+
+    def trace_user(self):
         JSON = self.open_json()
         json_workspaces = JSON['info']['WorkSpace']
-        json_indexes = []
+        users_index = []
+        with open(self.output_log, "r", encoding="utf-8") as f:
+            contents = [line.strip() for line in f] #quick fix to remove all \n in string
 
-        if result is None:
-            return None
+            result = self.trace_workspace(contents)
+            if result is None:
+                return None
+            
+            for found_workspace in result:
+                for i, json_workspace in enumerate(json_workspaces):
+                    if re.search(found_workspace, json_workspace):
+                        users_index.append(i)
+    
+            return users_index
 
-        for found_workspace in result:
-            for i, json_workspace in enumerate(json_workspaces):
-                if re.search(found_workspace, json_workspace):
-                    json_indexes.append(i)
-
-        return json_indexes
-
-    def generate_report(self,json_indexes:list,department:str):
+    def generate_report(self,users_index:list,department:str):
         self.output_report = os.path.join(self.output_path, "logs", f"check_out_report_{department}_{formatted_date}.txt")
         if self.check_exist(self.output_report):
             os.remove(self.output_report)
 
         # Read and parse the JSON file
         JSON = self.open_json()
-        for index in json_indexes:
-            if JSON['info']['Department'][index] == department:
-                report = f"{JSON['info']['Project'][index]} - {JSON['info']['UserName'][index]} - {JSON['info']['WorkSpace'][index]} - {JSON['info']['Email'][index]}"
+        for user in users_index:
+            if JSON['info']['Department'][user] == department:
+                report = f"{JSON['info']['Project'][user]} - {JSON['info']['UserName'][user]} - {JSON['info']['WorkSpace'][user]} - {JSON['info']['Email'][user]}"
                 with open(self.output_report, 'a', encoding='utf-8') as f:
                     f.write(report + "\n")
 

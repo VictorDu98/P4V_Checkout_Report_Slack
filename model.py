@@ -16,11 +16,13 @@ PRESET_DIR= os.path.join(ROOT_DIR,"presets")
 class Preset:
     def __init__(self, name):
         self.name = name
-        self.preset_root = os.path.join(PRESET_DIR,name)
+        self.preset_root = os.path.join(PRESET_DIR, name)
         self.preset_config = os.path.join(self.preset_root, f"config_{self.name}.json")
+        self.perforce_config = os.path.join(self.preset_root, f"p4config_{self.name}.txt")
+
         if not os.path.exists(self.preset_root):
             os.makedirs(self.preset_root, exist_ok=True)
-            self.create()
+            self.create_template()
 
     def __str__(self):
         return self.name
@@ -32,7 +34,7 @@ class Preset:
         else:
             return False
 
-    def create(self):
+    def create_template(self):
         dic = {
             "output":[
                 {
@@ -63,64 +65,46 @@ class Preset:
         with open(self.preset_config, 'w') as file:
             file.write(json.dumps(dic, indent=4))
 
-    def remove(self):
-        if self.check_exist(self.preset_config):
-            shutil.rmtree(self.preset_config)
-            print(f"Deleted preset: {self.name}")
-
-def slack_debug(webhook):
-    # Define the webhook URL provided by Slack
-    webhook_url = webhook
-
-    # Define the message payload
-    payload = {
-        "text": "Here is a message with an attachment.",
-        "attachments": [
-            {
-                "color": "#3192DC",  # Set the color of the attachment
-                "author_name": "Attachment Author",
-                "title": "Attachment Title",
-                "text": "This is the content of the attachment.",
-                "footer": "Attachment Footer",
-                "ts": 1234567890  # Timestamp (optional)
-            }
-        ]
-    }
-
-    # Send the POST request to Slack's webhook URL
-    response = requests.post(webhook_url, json=payload)
-
-    # Check the response
-    if response.status_code == 200:
-        print("Message sent successfully.")
-    else:
-        print(f"Failed to send message: {response.status_code}, {response.text}")
-
-
-class PerforceWorkspaceReport(Preset):
-    def __init__(self, name):
-        super().__init__(name)
-        self.p4_config = os.path.join(self.preset_root, f".p4config_{self.name}.txt")
-        if not os.path.exists(self.p4_config):
-            self.create()
-
-    def create(self):
         config = f"""
         P4PORT= "perforce:1666"
         P4USER= "p4user"
         P4CLIENT= "p4client"
         P4CHARSET= "utf-8"
         """
-        with open(self.p4_config, 'w') as file:
+        with open(self.perforce_config, 'w') as file:
             file.write(config)
 
+    def remove(self):
+        if self.check_exist(self.preset_config):
+            shutil.rmtree(self.preset_config)
+            print(f"Deleted preset: {self.name}")
+
+    def set_perforce_config(self, port, user, client, charset):
+        config = f"""
+        P4PORT= "{port}"
+        P4USER= "{user}"
+        P4CLIENT= "{client}"
+        P4CHARSET= "{charset}"
+        """
+        if not self.check_exist(self.perforce_config):
+            raise FileNotFoundError(f"File {self.perforce_config} does not exist.")
+
+        with open(self.perforce_config, 'w') as file:
+            file.write(config)
+
+    def open_json(self):
+        f = open(self.preset_config, "r", encoding="utf-8")
+        data = json.load(f)
+        f.close()
+        return data
+
     def login(self):
-        if not self.check_exist(self.p4_config):
-            raise FileNotFoundError(f"File {self.p4_config} does not exist.")
+        if not self.check_exist(self.perforce_config):
+            raise FileNotFoundError(f"File {self.perforce_config} does not exist.")
 
         from P4 import P4, P4Exception
         p4 = P4()
-        p4.config = self.p4_config
+        p4.config = self.perforce_config
 
         try:  # Catch exceptions with try/except
             p4.connect()  # Connect to the Perforce server
@@ -133,7 +117,16 @@ class PerforceWorkspaceReport(Preset):
                 print(e)
 
     @staticmethod
-    def regex_filter(string_list:list)-> set:
+    def filter_log(string_list:list)-> set:
+        """
+        Log file output string that always come with user@workspace in each line.\n
+        Use regex expression to match "mark for add" files and files that have the status of "exclusive checkout"\n
+        Lines of text that matched regex will be returned in a set array\n
+        Lines of text that fit in ignore case will be ignored since the file itself it's not on depot yet
+
+        :param string_list: read bunch of string line
+        :return: workspace name list that match regex expression
+        """
         pattern= r"by\s+(.*?)(\s+\*exclusive\*)?(\s+\*locked\*)?$"
         ignore_mark_for_add = r".*add.*"
         workspaces=set()
@@ -148,22 +141,13 @@ class PerforceWorkspaceReport(Preset):
         return workspaces
 
 
-    def generate_report(self,department:str,output:str):
-        # Process VFX department reports
-        if not self.check_exist(output):
-            raise FileNotFoundError(f"File {output} does not exist.")\
 
-        if JSON['info']['Department'][index] == department:
-            report = (f"{JSON['info']['Project'][index]} - {JSON['info']['UserName'][index]} - "
-                f"{JSON['info']['WorkSpace'][index]} - {JSON['info']['Email'][index]}")
-            with open(output, 'a', encoding='utf-8') as f:
-                f.write(report + "\n")
-
-    def find_user():
+    def filter_user(self):
         # Assume FilterLogFile() is defined elsewhere and returns a list of found workspaces.
-        result = regex_filter()
+        result = self.filter_log()
+        JSON = self.open_json()
         json_workspaces = JSON['info']['WorkSpace']
-        json_index = []
+        json_indexes = []
 
         if result is None:
             return None
@@ -171,8 +155,20 @@ class PerforceWorkspaceReport(Preset):
         for found_workspace in result:
             for i, json_workspace in enumerate(json_workspaces):
                 if re.search(found_workspace, json_workspace):
-                    json_index.append(i)
+                    json_indexes.append(i)
 
-        # Process VFX department reports
-        for index in json_index:
-            generate_report("ENV")
+        return json_indexes
+
+    def generate_report(self,json_indexes:list,department:str,output_full_path:str):
+        if self.check_exist(output_full_path):
+            os.remove(output_full_path)
+
+        # Read and parse the JSON file
+        JSON = self.open_json()
+        for index in json_indexes:
+            if JSON['info']['Department'][index] == department:
+                report = (f"{JSON['info']['Project'][index]} - {JSON['info']['UserName'][index]} - "
+                    f"{JSON['info']['WorkSpace'][index]} - {JSON['info']['Email'][index]}")
+                with open(output_full_path, 'a', encoding='utf-8') as f:
+                    f.write(report + "\n")
+

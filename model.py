@@ -31,7 +31,11 @@ class Preset:
         self.output_path = JSON["misc"][0]["Address"]
         self.slack_uri = JSON["misc"][0]["Slack"]
         self.producer_slack_id = JSON["misc"][0]["Producer"]
-        self.output_log = None
+
+        self.output_log = os.path.join(self.output_path,"logs", f"log_{formatted_date}.txt")
+        #if self.check_exist(self.output_log):
+            #os.remove(self.output_log)
+
         self.output_report = None
 
     def __str__(self):
@@ -119,9 +123,6 @@ class Preset:
         #if not self.check_exist(self.perforce_config):
             #raise FileNotFoundError(f"File {self.perforce_config} does not exist.")
 
-        self.output_log = os.path.join(self.output_path,"logs", f"log_{formatted_date}.txt")
-        if self.check_exist(self.output_log):
-            os.remove(self.output_log)
 
         p4 = P4()
         try:
@@ -167,16 +168,20 @@ class Preset:
 
         return workspaces
 
-
     def trace_user(self):
         JSON = self.open_json()
-        json_workspaces = JSON['info'][0]['WorkSpace']
+        #json_workspaces = JSON['info']
+        json_workspaces = {entry['WorkSpace']: entry for entry in JSON['info']}
+        #print(workspace_indexed)
+        #for i , ws in enumerate(workspace_indexed):
+            #print(i,ws)
         users_index = []
         with open(self.output_log, "r", encoding="utf-8") as f:
             contents = [line.strip() for line in f] #quick fix to remove all \n in string
 
             result = self.trace_workspace(contents)
             if result is None:
+                print("noooo")
                 return None
             
             for found_workspace in result:
@@ -187,19 +192,21 @@ class Preset:
             return users_index
 
     def generate_report(self,users_index:list,department:str):
-        self.output_report = os.path.join(self.output_path, "logs", f"check_out_report_{department}_{formatted_date}.txt")
+        self.output_report = os.path.join(self.output_path, "logs", f"report_{department}_{formatted_date}.txt")
         if self.check_exist(self.output_report):
             os.remove(self.output_report)
 
         # Read and parse the JSON file
         JSON = self.open_json()
         for user in users_index:
-            if JSON['info'][0]['Department'][user] == department:
-                report = f"{JSON['info'][0]['Project'][user]} - {JSON['info'][0]['UserName'][user]} - {JSON['info'][0]['WorkSpace'][user]} - {JSON['info'][0]['Email'][user]}"
+            if JSON['info'][user]['Department'] == department:
+                report = f"{JSON['info'][user]['Project']} - {JSON['info'][user]['UserName']} - {JSON['info'][user]['WorkSpace']} - {JSON['info'][user]['Email']}"
                 with open(self.output_report, 'a', encoding='utf-8') as f:
                     f.write(report + "\n")
 
 
 if __name__ == "__main__":
     object = Preset("GFH")
-    print(object.slack_uri)
+    print(formatted_date)
+    print(object.trace_user())
+    object.generate_report(users_index=object.trace_user(),department="ENV")

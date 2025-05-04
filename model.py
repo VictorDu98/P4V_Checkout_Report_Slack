@@ -22,21 +22,15 @@ class Preset:
         self.preset_root = os.path.join(PRESET_DIR, name)
         self.preset_config = os.path.join(self.preset_root, "config.json")
         self.perforce_config = os.path.join(self.preset_root, ".p4config")
-
         if not os.path.exists(self.preset_root):
             os.makedirs(self.preset_root, exist_ok=True)
             self.create_template()
 
         JSON = self.open_json()
-        self.output_path = JSON["misc"][0]["Address"]
-        self.slack_uri = JSON["misc"][0]["Slack"]
+        self.output_root = JSON["misc"][0]["OutputLogAndReport"]
+        self.output_log = os.path.join(self.output_root, f"log_{formatted_date}.txt")
+        self.slack_uri = JSON["misc"][0]["SlackUri"]
         self.producer_slack_id = JSON["misc"][0]["Producer"]
-
-        self.output_log = os.path.join(self.output_path,"logs", f"log_{formatted_date}.txt")
-        #if self.check_exist(self.output_log):
-            #os.remove(self.output_log)
-
-        self.output_report = None
 
     def __str__(self):
         return self.name
@@ -50,7 +44,7 @@ class Preset:
             "misc":[
                 {
                     "Address": "Project address on server network",
-                    "Slack": "Slack incoming webhook",
+                    "SlackUri": "Slack incoming webhook",
                     "Producer": "Producer slack id"
                 }
             ],
@@ -112,17 +106,19 @@ class Preset:
     def generate_log(self):
         """
         ------------------------- alice ----------------------------
-        //depot/project/file1.cpp#5 - edit - CL 12345 - alice_workspace
+        //depot/project/file1.cpp - edit - CL 12345 - alice_workspace
 
         ------------------------- bob ----------------------------
-        //depot/scripts/script.py#2 - edit - CL 12347 - bob_ws
+        //depot/scripts/script.py - edit - CL 12347 - bob_ws
         """
         JSON= self.open_json()
-        accounts_name = JSON["info"][0]["AccountName"]
+        json_accounts = {entry['AccountName'] for entry in JSON['info']}
 
-        #if not self.check_exist(self.perforce_config):
-            #raise FileNotFoundError(f"File {self.perforce_config} does not exist.")
+        output_log = os.path.join(self.output_root, f"log_{formatted_date}.txt")
 
+        if self.check_exist(output_log):
+            print("Found old log, deleting...")
+            os.remove(output_log)
 
         p4 = P4()
         try:
@@ -130,13 +126,12 @@ class Preset:
         except P4Exception as e:
             for e in p4.errors:  # Display errors
                 raise e
-
-        for name in accounts_name:
+        for name in json_accounts:
             # Run the `p4 opened -u <user>` command
             found_files = p4.run_opened("-u", name)
             if not found_files:
                 continue
-            with open(self.output_log, 'a', encoding='utf-8') as f:
+            with open(output_log, 'a', encoding='utf-8') as f:
                 f.write(f"------------------------- {name} ----------------------------\n")
                 for file in found_files:
                     if file.get("action") == "edit":
@@ -170,18 +165,19 @@ class Preset:
 
     def trace_user(self):
         JSON = self.open_json()
-        #json_workspaces = JSON['info']
-        json_workspaces = {entry['WorkSpace']: entry for entry in JSON['info']}
+        json_workspaces = {entry['WorkSpace'] for entry in JSON['info']}
         #print(workspace_indexed)
         #for i , ws in enumerate(workspace_indexed):
             #print(i,ws)
         users_index = []
+        if not self.check_exist(self.output_log):
+            raise FileNotFoundError(f"File {self.output_log} does not exist.")
+
         with open(self.output_log, "r", encoding="utf-8") as f:
             contents = [line.strip() for line in f] #quick fix to remove all \n in string
 
             result = self.trace_workspace(contents)
             if result is None:
-                print("noooo")
                 return None
             
             for found_workspace in result:
@@ -191,22 +187,24 @@ class Preset:
     
             return users_index
 
-    def generate_report(self,users_index:list,department:str):
-        self.output_report = os.path.join(self.output_path, "logs", f"report_{department}_{formatted_date}.txt")
-        if self.check_exist(self.output_report):
-            os.remove(self.output_report)
+    def generate_report(self,department:str):
+        output_report = os.path.join(self.output_root, f"report_{department}_{formatted_date}.txt")
+        if self.check_exist(output_report):
+            os.remove(output_report)
 
-        # Read and parse the JSON file
         JSON = self.open_json()
-        for user in users_index:
+        users_found = self.trace_user()
+        for user in users_found:
             if JSON['info'][user]['Department'] == department:
                 report = f"{JSON['info'][user]['Project']} - {JSON['info'][user]['UserName']} - {JSON['info'][user]['WorkSpace']} - {JSON['info'][user]['Email']}"
-                with open(self.output_report, 'a', encoding='utf-8') as f:
+                with open(output_report, 'a', encoding='utf-8') as f:
                     f.write(report + "\n")
 
 
 if __name__ == "__main__":
     object = Preset("GFH")
-    print(formatted_date)
-    print(object.trace_user())
-    object.generate_report(users_index=object.trace_user(),department="ENV")
+    #print(formatted_date)
+    #print(object.trace_user())
+    object.generate_report(department="ENV")
+    # todo : Test with real p4 server and get log result
+    #object.generate_log()

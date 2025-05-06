@@ -32,7 +32,7 @@ class Preset:
         self.slack_uri = JSON["misc"][0]["Slack"]
         self.producer_slack_id = JSON["misc"][0]["Producer"]
 
-        self.output_log = os.path.join(self.output_path,"logs", f"log_{formatted_date}.txt")
+        self.output_log = os.path.join(self.output_path, f"log_{formatted_date}.txt")
         #if self.check_exist(self.output_log):
             #os.remove(self.output_log)
 
@@ -118,7 +118,7 @@ class Preset:
         //depot/scripts/script.py#2 - edit - CL 12347 - bob_ws
         """
         JSON= self.open_json()
-        accounts_name = JSON["info"][0]["AccountName"]
+        accounts_name = {entry['WorkSpace'] for entry in JSON['info']}
 
         #if not self.check_exist(self.perforce_config):
             #raise FileNotFoundError(f"File {self.perforce_config} does not exist.")
@@ -127,14 +127,25 @@ class Preset:
         p4 = P4()
         try:
             p4.connect()  # Connect to the Perforce server
+            info = p4.run("info")  # Run "p4 info" (returns a dict)
+            for key in info[0]:  # and display all key-value pairs
+                print(key, "=", info[0][key])
         except P4Exception as e:
             for e in p4.errors:  # Display errors
                 raise e
 
+        # todo investigate why run_opened only accept "str" instead of variable
+        found_files = p4.run_opened("-u", "hieuleminh")
+        return
+
+
+        """
         for name in accounts_name:
             # Run the `p4 opened -u <user>` command
-            found_files = p4.run_opened("-u", name)
+            found_files = p4.run_opened("-u", str(name))\
+
             if not found_files:
+                print("No checkout file were found")
                 continue
             with open(self.output_log, 'a', encoding='utf-8') as f:
                 f.write(f"------------------------- {name} ----------------------------\n")
@@ -146,6 +157,7 @@ class Preset:
                         f.write(f"{depot_file} - edit - CL {changelist} - {client}\n")
                 f.write("\n")
         p4.disconnect()
+    """
 
     @staticmethod
     def trace_workspace(string_list: list) -> set:
@@ -207,6 +219,7 @@ class Preset:
 
 if __name__ == "__main__":
     object = Preset("GFH")
-    print(formatted_date)
-    print(object.trace_user())
-    object.generate_report(users_index=object.trace_user(),department="ENV")
+    #print(formatted_date)
+    #print(object.trace_user())
+    #object.generate_report(users_index=object.trace_user(),department="ENV")
+    object.generate_log()

@@ -43,7 +43,7 @@ class View:
             choice = input("Select an option (1-4): ").strip()
             
             if choice == '1':
-                self.prompt_p4_config(preset_name)
+                self.prompt_p4_config()
             elif choice == '2':
                 self.controller.handle_preset_config(preset_name)
             elif choice == '3':
@@ -54,14 +54,14 @@ class View:
             else:
                 self.display_invalid_option()
 
-    def prompt_p4_config(self, preset_name):
+    def prompt_p4_config(self):
         config = {
             'port': input("P4PORT (e.g., perforce:1666): ").strip(),
             'user': input("P4USER: ").strip(),
             'client': input("P4CLIENT: ").strip(),
             'charset': input("P4CHARSET (default: utf-8): ").strip() or "utf-8"
         }
-        self.controller.handle_p4_config(preset_name, config)
+        self.controller.handle_p4_config(config)
 
     def prompt_remove_preset(self):
         preset_name = input("Enter the name of the preset to remove: ").strip()

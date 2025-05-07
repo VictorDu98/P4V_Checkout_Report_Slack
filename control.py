@@ -1,66 +1,109 @@
 import time
 import os
+from datetime import datetime
+from model import Model
 
-class Controller():
-    def __init__(self,model,view):
+class Controller:
+    def __init__(self, model):
         self.model = model
+        self.view = None  # Will be set later to avoid circular dependency
+        self.tasks = []
+
+    def set_view(self, view):
         self.view = view
 
+    def handle_new_preset(self, preset_name):
+        try:
+            self.model = Model(preset_name)  # Create new model instance with preset name
+            self.view.display_success(f"Created new preset: {preset_name}")
+        except Exception as e:
+            self.view.display_error(f"Failed to create preset: {str(e)}")
 
-    def queue_task(self,target_time):
-        # accept signal clicked
-        # get order from model
-        # set current task order number
-        # get user input target_time
-        """while True:
-            current_time = time.strftime("%H:%M")
-            if current_time == target_time:
-            #subprocess.run(fr"D:\\tools\\P4V_Checkout_Report_Slack\\slack.py")
-            time.sleep(60)'"""
+    def handle_p4_config(self,config):
+        try:
+            self.model.set_perforce_config(
+                port=config['port'],
+                user=config['user'],
+                client=config['client'],
+                charset=config['charset']
+            )
+            self.view.display_success("P4 configuration updated successfully")
+        except Exception as e:
+            self.view.display_error(f"Failed to update P4 config: {str(e)}")
 
-    def add_task(self,name):
-        # find preset with name
-            # accept user input P4 env
-            # accept user input  target_time to trigger Task
-            #Q
-            #
-        # if not exist then create new preset
-             # create object based on View input
-        task = self.model.Preset(name=name)
-        #TODO: Replace with View string input
-        """task.create_p4config(
-            port="perforce:1666",
-            user="p4user",
-            client="p4client",
-            charset="utf-8")
-        """
+    def handle_preset_config(self, preset_name):
+        try:
+            # Load and display current config
+            config = self.model.open_json()
+            self.view.display_success("Configuration loaded successfully")
+            return config
+        except Exception as e:
+            self.view.display_error(f"Failed to load configuration: {str(e)}")
+            return None
 
-        self.tasks.append(task)
-        # assign task to view
-        #self.refresh_view()
+    def handle_schedule_time(self, preset_name, time):
+        try:
+            self.queue_task(time)
+            self.view.display_success(f"Schedule set for {time}")
+        except Exception as e:
+            self.view.display_error(f"Failed to set schedule: {str(e)}")
 
-    def refresh_view(self):
-        # update view list
-        pass
-    def execute_task(self):
-        # accept signal button clicked
-        # run task
-        pass
+    def handle_remove_preset(self, preset_name, confirmed):
+        if not confirmed:
+            return
 
-    def status_task(self):
-        # update status of task
-        # 0= disabled, 1= failed, 2=success
-        pass
+        try:
+            self.model.remove()
+            self.view.display_success(f"Preset '{preset_name}' removed successfully")
+        except Exception as e:
+            self.view.display_error(f"Failed to remove preset: {str(e)}")
 
-    def remove_task(self,task):
-        # accept singal button clicked
-        # prompt user yes/no
-        # find task name
-            # stop subprocess of task
-        model.Preset.remove_preset(preset=task)
-        #self.refreshView()
+    def handle_generate_report(self, preset_name, department):
+        try:
+            # Generate log first
+            self.model.generate_log()
+            # Then generate report for specific department
+            self.model.generate_report(department)
+            self.view.display_success(f"Report generated successfully for {department}")
+        except Exception as e:
+            self.view.display_error(f"Failed to generate report: {str(e)}")
 
+    def queue_task(self, target_time):
+        """Schedule a task to run at specific time"""
+        try:
+            # Store the task details
+            task = {
+                'time': target_time,
+                'preset': self.model.name,
+                'status': 'scheduled'
+            }
+            self.tasks.append(task)
 
-app = schedule()
-app.add_task(name="GFH")
-#app.remove_task(task="GFH")
+            # In a real implementation, you might want to use a proper scheduler
+            # For now, we'll just store the task
+            return True
+        except Exception as e:
+            raise Exception(f"Failed to schedule task: {str(e)}")
+
+    def execute_task(self, task):
+        """Execute a scheduled task"""
+        try:
+            # Generate log and report
+            self.model.generate_log()
+            # You might want to get the department from the configuration
+            self.model.generate_report("ENV")  # Default to ENV department
+            task['status'] = 'completed'
+            return True
+        except Exception as e:
+            task['status'] = 'failed'
+            raise Exception(f"Task execution failed: {str(e)}")
+
+    def check_scheduled_tasks(self):
+        """Check and execute scheduled tasks"""
+        current_time = time.strftime("%H:%M")
+        for task in self.tasks:
+            if task['time'] == current_time and task['status'] == 'scheduled':
+                try:
+                    self.execute_task(task)
+                except Exception as e:
+                    self.view.display_error(str(e))

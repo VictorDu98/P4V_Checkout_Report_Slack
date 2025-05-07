@@ -7,13 +7,12 @@ from datetime import datetime
 from P4 import P4, P4Exception
 
 formatted_date = datetime.now().strftime("%y%m%d")
-
-target_time = "15:06"
+#target_time = "15:06"
 
 ROOT_DIR= os.path.dirname(os.path.realpath(__file__))
 PRESET_DIR= os.path.join(ROOT_DIR,"presets")
 
-class Preset:
+class Model:
     """
     GENERATE LOG - > TRACE WORKSPACE  -> TRACE USER -> WRITE REPORT
     """
@@ -43,7 +42,7 @@ class Preset:
         dic = {
             "misc":[
                 {
-                    "Address": "Project address on server network",
+                    "OutputLogAndReport": "Project address on server network",
                     "SlackUri": "Slack incoming webhook",
                     "Producer": "Producer slack id"
                 }
@@ -202,9 +201,9 @@ class Preset:
 
 
 if __name__ == "__main__":
-    object = Preset("GFH")
+    object = Model("GFH")
     #print(formatted_date)
     #print(object.trace_user())
-    object.generate_report(department="ENV")
+    #object.generate_report(department="ENV")
     # todo : Test with real p4 server and get log result
     #object.generate_log()

@@ -120,16 +120,18 @@ class Model:
         if self.check_exist(output_log):
             print("Found old log, deleting...")
             os.remove(output_log)
-
+        # TODO Make function to select preset .p4config before run
         p4 = P4()
         try:
             p4.connect()  # Connect to the Perforce server
+            print("Login p4 success")
         except P4Exception as e:
             for e in p4.errors:  # Display errors
                 raise e
         for name in json_accounts:
             # Run the `p4 opened -u <user>` command
             found_files = p4.run_opened("-u", name)
+            #print(found_files)
             if not found_files:
                 continue
             with open(output_log, 'a', encoding='utf-8') as f:
@@ -152,7 +154,7 @@ class Model:
         :param string_list: Lines from a log file.
         :return: A set of workspace names that matched.
         """
-        pattern = re.compile(r"^.+ - edit - CL (\d+|default) - ([A-Za-z0-9_]+)$")
+        pattern = re.compile(r"^.+ - edit - CL (\d+|default) - ([A-Za-z0-9_]+)")
 
         workspaces = []
 
@@ -160,6 +162,7 @@ class Model:
             match = pattern.match(line.strip())
             if match:
                 workspace_name = match.group(2)
+                #print(workspace_name)
                 if workspace_name not in workspaces:
                     workspaces.append(workspace_name)
 
@@ -167,9 +170,9 @@ class Model:
 
     def trace_user(self):
         JSON = self.open_json()
-        # TODO fix this to return correct order from json
         json_workspaces=[]
         for entry in JSON["info"]:
+            #print(entry["WorkSpace"])
             json_workspaces.append(entry["WorkSpace"])
         users_index = []
 
@@ -184,11 +187,13 @@ class Model:
                 return None
             
             for found_workspace in result:
+                #print(found_workspace)
                 i=0
                 for json_workspace in json_workspaces:
-                    if re.match(found_workspace, json_workspace) and i not in users_index:
+                    if re.match(found_workspace, json_workspace):
                         users_index.append(i)
                     i=i+1
+            #print(users_index)
             return users_index
 
     def generate_report(self,department:str):
@@ -209,6 +214,7 @@ if __name__ == "__main__":
     object = Model("GFH")
     #print(formatted_date)
     #print(object.trace_user())
-    object.generate_report(department="ENV")
+
     # todo : Test with real p4 server and get log result
     #object.generate_log()
+    object.generate_report(department="ENV")

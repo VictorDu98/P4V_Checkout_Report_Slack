@@ -111,7 +111,9 @@ class Model:
         //depot/scripts/script.py - edit - CL 12347 - bob_ws
         """
         JSON= self.open_json()
-        json_accounts = {entry['AccountName'] for entry in JSON['info']}
+        json_accounts = []
+        for entry in JSON["info"]:
+            json_accounts.append(entry["AccountName"])
 
         output_log = os.path.join(self.output_root, f"log_{formatted_date}.txt")
 
@@ -185,7 +187,6 @@ class Model:
                 i=0
                 for json_workspace in json_workspaces:
                     if re.match(found_workspace, json_workspace) and i not in users_index:
-                        print(found_workspace , json_workspace)
                         users_index.append(i)
                     i=i+1
             return users_index

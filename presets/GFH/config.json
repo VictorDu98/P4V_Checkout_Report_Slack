@@ -1,0 +1,123 @@
+{
+    "misc": [
+        {
+            "OutputLogAndReport": "D:\\projects\\Python_Script_All\\P4V_Checkout_Report_Slack\\presets\\GFH",
+            "SlackUri": "https://hooks.slack.com/services/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",
+            "Producer": "U07M340MKDF"
+        }
+    ],
+    "info": [
+        {
+            "UserName": "Le Minh Hieu",
+            "AccountName": "hieuleminh",
+            "Project": "GFH",
+            "Department": "ENV",
+            "Email": "hieu.le@virtuos-sparx.com",
+            "WorkSpace": "virtuos_hieuleminh_vnspxw0676"
+        },
+        {
+            "UserName": "Du Van Toan",
+            "AccountName": "toan.du-c",
+            "Project": "GFH",
+            "Department": "ENV",
+            "Email": "toan.du@virtuos-sparx.com",
+            "WorkSpace": "virtuos_toan.du_vnspxw1069"
+        },
+        {
+            "UserName": "Le Ngoc Vy",
+            "AccountName": "vy.le_a-c",
+            "Project": "GFH",
+            "Department": "ENV",
+            "Email": "vy.le_a@virtuos-sparx.com",
+            "WorkSpace": "virtuos_vy.le_a-c_VNSPXW0651"
+        },
+        {
+            "UserName": "Nguyen Cong Hiep",
+            "AccountName": "hiep.nguyen_a-c",
+            "Project": "GFH",
+            "Department": "ENV",
+            "Email": "hiep.nguyen_a@virtuos-sparx.com",
+            "WorkSpace": "virtuos_hiep.nguyen_a-c_vnspxw0821"
+        },
+        {
+            "UserName": "Kristian Pedlow",
+            "AccountName": "hieuleminh",
+            "Project": "GFH",
+            "Department": "ENV",
+            "Email": "kristian@virtuos-sparx.com",
+            "WorkSpace": "virtuos_krist"
+        },
+        {
+            "UserName": "Review 648",
+            "AccountName": "hieuleminh",
+            "Project": "GFH",
+            "Department": "ENV",
+            "Email": "hieu.le@virtuos-sparx.com",
+            "WorkSpace": "virtuos_hieuleminh_vnspxw0648"
+        },
+        {
+            "UserName": "Phan Le Minh Tan",
+            "AccountName": "tan.phan-c",
+            "Project": "GFH",
+            "Department": "ENV",
+            "Email": "tan.phan@virtuos-sparx.com",
+            "WorkSpace": "virtuos_tan.phan-c_vnspxw0995"
+        },
+        {
+            "UserName": "Nguyen Hoang Bao",
+            "AccountName": "bao.nguyen-c",
+            "Project": "GFH",
+            "Department": "ENV",
+            "Email": "bao.nguyen@virtuos-sparx.com",
+            "WorkSpace": "virtuos_bao.nguyen-c_vnspxw0681"
+        },
+        {
+            "UserName": "Ngo Gia An",
+            "AccountName": "an.ngo",
+            "Project": "GFH",
+            "Department": "ENV",
+            "Email": "an.ngo@virtuos-sparx.com",
+            "WorkSpace": "virtuos_an.ngo-c_vnspxw0616"
+        },
+        {
+            "UserName": "Huynh Tu Dung",
+            "AccountName": "dung.huynh-c",
+            "Project": "GFH",
+            "Department": "ENV",
+            "Email": "dung.huynh@virtuos-sparx.com",
+            "WorkSpace": "virtuos_dung.huynh-c_vnspxw0876"
+        },
+        {
+            "UserName": "Nguyen An Tuong",
+            "AccountName": "tuong.nguyen-c",
+            "Project": "GFH",
+            "Department": "ENV",
+            "Email": "tuong.nguyen@virtuos-sparx.com",
+            "WorkSpace": "virtuos_tuong.nguyen-c_vnspxw0945"
+        },
+        {
+            "UserName": "loan.trinh-c",
+            "AccountName": "loan.trinh-c",
+            "Project": "GFH",
+            "Department": "ENV",
+            "Email": "loan.trinh@virtuos-sparx.com",
+            "WorkSpace": "virtuos_loan.trinh-c_vnspxw0923"
+        },
+        {
+            "UserName": "Nguyen Thi Ut Minh",
+            "AccountName": "minh.nguyen_e-c",
+            "Project": "GFH",
+            "Department": "ENV",
+            "Email": "minh.nguyen_e@virtuos-sparx.com",
+            "WorkSpace": "virtuos_minh.nguyen_e-c_vnspxw0947"
+        },
+         {
+            "UserName": "Nguyen Thanh Trong",
+            "AccountName": "trong.nguyen-c",
+            "Project": "GFH",
+            "Department": "ENV",
+            "Email": "trong.nguyen@virtuos-sparx.com",
+            "WorkSpace": "virtuos_trong.nguyen-c_vnspxw0538"
+        }
+    ]
+}

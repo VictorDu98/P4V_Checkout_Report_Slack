@@ -142,7 +142,7 @@ class Model:
         p4.disconnect()
 
     @staticmethod
-    def trace_workspace(string_list: list) -> set:
+    def trace_workspace(string_list: list):
         """
         Use regex expression to match lines that include "edit"
         and extract the workspace names.
@@ -152,23 +152,25 @@ class Model:
         """
         pattern = re.compile(r"^.+ - edit - CL (\d+|default) - ([A-Za-z0-9_]+)$")
 
-        workspaces = set()
+        workspaces = []
 
         for line in string_list:
             match = pattern.match(line.strip())
             if match:
                 workspace_name = match.group(2)
-                workspaces.add(workspace_name)
+                if workspace_name not in workspaces:
+                    workspaces.append(workspace_name)
 
         return workspaces
 
     def trace_user(self):
         JSON = self.open_json()
-        json_workspaces = {entry['WorkSpace'] for entry in JSON['info']}
-        #print(workspace_indexed)
-        #for i , ws in enumerate(workspace_indexed):
-            #print(i,ws)
+        # TODO fix this to return correct order from json
+        json_workspaces=[]
+        for entry in JSON["info"]:
+            json_workspaces.append(entry["WorkSpace"])
         users_index = []
+
         if not self.check_exist(self.output_log):
             raise FileNotFoundError(f"File {self.output_log} does not exist.")
 
@@ -180,10 +182,12 @@ class Model:
                 return None
             
             for found_workspace in result:
-                for i, json_workspace in enumerate(json_workspaces):
-                    if re.search(found_workspace, json_workspace):
+                i=0
+                for json_workspace in json_workspaces:
+                    if re.match(found_workspace, json_workspace) and i not in users_index:
+                        print(found_workspace , json_workspace)
                         users_index.append(i)
-    
+                    i=i+1
             return users_index
 
     def generate_report(self,department:str):
@@ -204,6 +208,6 @@ if __name__ == "__main__":
     object = Model("GFH")
     #print(formatted_date)
     #print(object.trace_user())
-    #object.generate_report(department="ENV")
+    object.generate_report(department="ENV")
     # todo : Test with real p4 server and get log result
     #object.generate_log()

@@ -30,7 +30,11 @@ class Model:
         self.output_log = os.path.join(self.output_root, f"log_{formatted_date}.txt")
         self.slack_uri = JSON["misc"][0]["SlackUri"]
         self.producer_slack_id = JSON["misc"][0]["Producer"]
-
+        self.department = []
+        for entry in JSON["info"]:
+            if entry["Department"] not in self.department:
+                self.department.append(entry["Department"])
+        print(self.department)
     def __str__(self):
         return self.name
 
@@ -128,6 +132,7 @@ class Model:
         except P4Exception as e:
             for e in p4.errors:  # Display errors
                 raise e
+
         for name in json_accounts:
             # Run the `p4 opened -u <user>` command
             found_files = p4.run_opened("-u", name)
@@ -199,6 +204,7 @@ class Model:
     def generate_report(self,department:str):
         output_report = os.path.join(self.output_root, f"report_{department}_{formatted_date}.txt")
         if self.check_exist(output_report):
+            print("Found old report, deleting ...")
             os.remove(output_report)
 
         JSON = self.open_json()
@@ -209,12 +215,40 @@ class Model:
                 with open(output_report, 'a', encoding='utf-8') as f:
                     f.write(report + "\n")
 
+    def send_slack(self,department):
+        output_report = os.path.join(self.output_root, f"report_{department}_{formatted_date}.txt")
+        if not self.check_exist(output_report):
+            raise FileNotFoundError(f"File {output_report} does not exist.")
+
+        with open(output_report) as f:
+            contents = f.read()
+            payload = {
+                "attachments": [
+                    {
+                        "text": f"{contents} CC: <@{self.producer_slack_id}>",
+                        "color": "#2F783B",
+                        "author_name": "ENV",
+                        "fallback": f"Hello producer, please help notify these artists about their P4V checked out files."
+                    }
+                ]
+            }
+            # Send the POST request to Slack
+            response = requests.post(self.slack_uri, json=payload, headers={'Content-Type': 'application/json'})
+
+            # Check the response
+            if response.status_code == 200:
+                print("Message sent successfully!")
+            else:
+                print(f"Failed to send message. Status code: {response.status_code}, Response: {response.text}")
+
+    def run(self):
+        object.generate_log()
+        for department in self.department:
+            object.generate_report(department=department)
+            object.send_slack(department=department)
 
 if __name__ == "__main__":
     object = Model("GFH")
     #print(formatted_date)
     #print(object.trace_user())
-
-    # todo : Test with real p4 server and get log result
-    #object.generate_log()
-    object.generate_report(department="ENV")
+    object.run()

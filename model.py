@@ -4,6 +4,7 @@ import requests
 import json
 import re
 import random
+import time
 from datetime import datetime
 from P4 import P4, P4Exception
 
@@ -15,7 +16,7 @@ PRESET_DIR= os.path.join(ROOT_DIR,"presets")
 
 class Model:
     """
-    GENERATE LOG - > TRACE WORKSPACE  -> TRACE USER -> WRITE REPORT
+    GENERATE LOG - >  TRACE WORKSPACE  -> TRACE USER -> WRITE REPORT -> SEND SLACK
     """
     def __init__(self, name):
         self.name = name
@@ -28,7 +29,7 @@ class Model:
 
         JSON = self.open_json()
         self.output_root = JSON["misc"][0]["OutputLogAndReport"]
-        self.output_log = os.path.join(self.output_root, f"log_{formatted_date}.txt")
+        self.output_log = os.path.join(self.output_root, f"log_{self.name}_{formatted_date}.txt")
         self.slack_uri = JSON["misc"][0]["SlackUri"]
         self.producer_slack_id = JSON["misc"][0]["Producer"]
         self.department = []
@@ -120,7 +121,7 @@ class Model:
         for entry in JSON["info"]:
             json_accounts.append(entry["AccountName"])
 
-        output_log = os.path.join(self.output_root, f"log_{formatted_date}.txt")
+        output_log = os.path.join(self.output_root, f"log_{self.name}_{formatted_date}.txt")
 
         if self.check_exist(output_log):
             print("Found old log, deleting...")
@@ -184,7 +185,7 @@ class Model:
         users_index = []
 
         if not self.check_exist(self.output_log):
-            raise FileNotFoundError(f"File {self.output_log} does not exist.")
+            return None
 
         with open(self.output_log, "r", encoding="utf-8") as f:
             contents = [line.strip() for line in f] #quick fix to remove all \n in string
@@ -211,11 +212,14 @@ class Model:
 
         JSON = self.open_json()
         users_found = self.trace_user()
-        for user in users_found:
-            if JSON['info'][user]['Department'] == department:
-                report = f"{JSON['info'][user]['Project']} - {JSON['info'][user]['UserName']} - {JSON['info'][user]['WorkSpace']} - {JSON['info'][user]['Email']}"
-                with open(output_report, 'a', encoding='utf-8') as f:
-                    f.write(report + "\n")
+        if users_found:
+            for user in users_found:
+                if JSON['info'][user]['Department'] == department:
+                    report = f"{JSON['info'][user]['Project']} - {JSON['info'][user]['UserName']} - {JSON['info'][user]['WorkSpace']} - {JSON['info'][user]['Email']}"
+                    with open(output_report, 'a', encoding='utf-8') as f:
+                        f.write(report + "\n")
+        else:
+            print("No user found")
 
     def send_slack(self,department):
         hex_color = hex(random.randrange(0, 2**24))
@@ -253,9 +257,18 @@ class Model:
             self.send_slack(department=department)
 
 if __name__ == "__main__":
-    GFH = Model("GFH")
-    ISN1 = Model("ISN_1")
-    ISN2 = Model("ISN_2")
-    GFH.run()
-    ISN1.run()
-    ISN2.run()
+    while True:
+        current_time = time.strftime("%H:%M")
+        if current_time == "20:45" or current_time == "23:45" or current_time == "1:45":
+            GFH = Model("GFH")
+            ISN_ENV_1 = Model("ISN_ENV_1")
+            ISN_ENV_2 = Model("ISN_ENV_2")
+            ISN_VFX_1 = Model("ISN_VFX_1")
+            ISN_VFX_2 = Model("ISN_VFX_2")
+            GFH.run()
+            ISN_ENV_1.run()
+            ISN_ENV_2.run()
+            ISN_VFX_1.run()
+            ISN_VFX_2.run()
+
+        time.sleep(60) # Interval trigger time

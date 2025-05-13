@@ -3,6 +3,7 @@ import shutil
 import requests
 import json
 import re
+import random
 from datetime import datetime
 from P4 import P4, P4Exception
 
@@ -34,6 +35,7 @@ class Model:
         for entry in JSON["info"]:
             if entry["Department"] not in self.department:
                 self.department.append(entry["Department"])
+        print(self.department)
 
     def __str__(self):
         return self.name
@@ -216,6 +218,9 @@ class Model:
                     f.write(report + "\n")
 
     def send_slack(self,department):
+        hex_color = hex(random.randrange(0, 2**24))
+        std_color = "#" + hex_color[2:]
+
         output_report = os.path.join(self.output_root, f"report_{department}_{formatted_date}.txt")
         if not self.check_exist(output_report):
             return
@@ -226,8 +231,8 @@ class Model:
                 "attachments": [
                     {
                         "text": f"{contents} CC: <@{self.producer_slack_id}>",
-                        "color": "#2F783B",
-                        "author_name": "ENV",
+                        "color": f"{std_color}",
+                        "author_name": f"{department}",
                         "fallback": f"Hello producer, please help notify these artists about their P4V checked out files."
                     }
                 ]
@@ -251,8 +256,6 @@ if __name__ == "__main__":
     GFH = Model("GFH")
     ISN1 = Model("ISN_1")
     ISN2 = Model("ISN_2")
-    #print(formatted_date)
-    #print(object.trace_user())
     GFH.run()
     ISN1.run()
     ISN2.run()

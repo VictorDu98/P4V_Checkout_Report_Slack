@@ -34,7 +34,7 @@ class Model:
         for entry in JSON["info"]:
             if entry["Department"] not in self.department:
                 self.department.append(entry["Department"])
-        print(self.department)
+
     def __str__(self):
         return self.name
 
@@ -76,7 +76,6 @@ class Model:
         config = f"""
         P4PORT= "perforce:1666"
         P4USER= "p4user"
-        P4CLIENT= "p4client"
         P4CHARSET= "utf-8"
         """
         with open(self.perforce_config, 'w') as file:
@@ -124,7 +123,8 @@ class Model:
         if self.check_exist(output_log):
             print("Found old log, deleting...")
             os.remove(output_log)
-        # TODO Make function to select preset .p4config before run
+
+        os.system(f"p4 set P4CONFIG={self.perforce_config}")
         p4 = P4()
         try:
             p4.connect()  # Connect to the Perforce server
@@ -218,7 +218,7 @@ class Model:
     def send_slack(self,department):
         output_report = os.path.join(self.output_root, f"report_{department}_{formatted_date}.txt")
         if not self.check_exist(output_report):
-            raise FileNotFoundError(f"File {output_report} does not exist.")
+            return
 
         with open(output_report) as f:
             contents = f.read()
@@ -242,13 +242,17 @@ class Model:
                 print(f"Failed to send message. Status code: {response.status_code}, Response: {response.text}")
 
     def run(self):
-        object.generate_log()
+        self.generate_log()
         for department in self.department:
-            object.generate_report(department=department)
-            object.send_slack(department=department)
+            self.generate_report(department=department)
+            self.send_slack(department=department)
 
 if __name__ == "__main__":
-    object = Model("GFH")
+    GFH = Model("GFH")
+    ISN1 = Model("ISN_1")
+    ISN2 = Model("ISN_2")
     #print(formatted_date)
     #print(object.trace_user())
-    object.run()
+    GFH.run()
+    ISN1.run()
+    ISN2.run()

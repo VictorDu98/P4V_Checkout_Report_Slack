@@ -1,4 +1,5 @@
 import os
+import sys
 import shutil
 import requests
 import json
@@ -16,7 +17,13 @@ PRESET_DIR= os.path.join(ROOT_DIR,"presets")
 
 class Model:
     """
-    GENERATE LOG - >  TRACE WORKSPACE  -> TRACE USER -> WRITE REPORT -> SEND SLACK
+    1. READ CONTENT FROM PRESET JSON CONFIG
+    2. GENERATE LOG
+    3. TRACE WORKSPACE
+    4. TRACE USER FROM WORKSPACE FOUND
+    5. GENERATE REPORT
+    6 .SEND SLACK
+
     """
     def __init__(self, name):
         self.name = name
@@ -36,7 +43,7 @@ class Model:
         for entry in JSON["info"]:
             if entry["Department"] not in self.department:
                 self.department.append(entry["Department"])
-        print(self.department)
+        #print(self.department)
 
     def __str__(self):
         return self.name
@@ -111,10 +118,14 @@ class Model:
     def generate_log(self):
         """
         ------------------------- alice ----------------------------
-        //depot/project/file1.cpp - edit - CL 12345 - alice_workspace
+        //depot/project/file1.cpp  - edit - CL 12345 - alice_workspace
 
         ------------------------- bob ----------------------------
         //depot/scripts/script.py - edit - CL 12347 - bob_ws
+
+        ------------------------- P4 Username ----------------------------
+        [1] Current file depot address - [2] Status - [3] Changelist numbers - [4] Client name
+
         """
         JSON= self.open_json()
         json_accounts = []
@@ -177,15 +188,16 @@ class Model:
         return workspaces
 
     def trace_user(self):
-        JSON = self.open_json()
+        if not self.check_exist(self.output_log):
+            return None
+
         json_workspaces=[]
+        users_index = []
+
+        JSON = self.open_json()
         for entry in JSON["info"]:
             #print(entry["WorkSpace"])
             json_workspaces.append(entry["WorkSpace"])
-        users_index = []
-
-        if not self.check_exist(self.output_log):
-            return None
 
         with open(self.output_log, "r", encoding="utf-8") as f:
             contents = [line.strip() for line in f] #quick fix to remove all \n in string
@@ -237,7 +249,7 @@ class Model:
                         "text": f"{contents} CC: <@{self.producer_slack_id}>",
                         "color": f"{std_color}",
                         "author_name": f"{department}",
-                        "fallback": f"Hello producer, please help notify these artists about their P4V checked out files."
+                        "fallback": f"Hello  <@{self.producer_slack_id}>, please help notify these artists about their P4V checked out files."
                     }
                 ]
             }
@@ -256,19 +268,23 @@ class Model:
             self.generate_report(department=department)
             self.send_slack(department=department)
 
-if __name__ == "__main__":
+def main(*args):
+    print("Running P4V Checkout tool")
     while True:
         current_time = time.strftime("%H:%M")
-        if current_time == "20:45" or current_time == "23:45" or current_time == "1:45":
-            GFH = Model("GFH")
-            ISN_ENV_1 = Model("ISN_ENV_1")
-            ISN_ENV_2 = Model("ISN_ENV_2")
-            ISN_VFX_1 = Model("ISN_VFX_1")
-            ISN_VFX_2 = Model("ISN_VFX_2")
-            GFH.run()
-            ISN_ENV_1.run()
-            ISN_ENV_2.run()
-            ISN_VFX_1.run()
-            ISN_VFX_2.run()
+        for arg in args:
+            if current_time == arg:
+                GFH = Model("GFH")
+                ISN_ENV_1 = Model("ISN_ENV_1")
+                ISN_ENV_2 = Model("ISN_ENV_2")
+                ISN_VFX_1 = Model("ISN_VFX_1")
+                ISN_VFX_2 = Model("ISN_VFX_2")
+                GFH.run()
+                ISN_ENV_1.run()
+                ISN_ENV_2.run()
+                ISN_VFX_1.run()
+                ISN_VFX_2.run()
+            time.sleep(60)  # Interval trigger time
 
-        time.sleep(60) # Interval trigger time
+if __name__ == "__main__":
+    main("20:45","23:45","1:45")

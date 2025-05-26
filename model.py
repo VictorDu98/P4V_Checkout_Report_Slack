@@ -284,7 +284,7 @@ def main(*args):
                 ISN_ENV_2.run()
                 ISN_VFX_1.run()
                 ISN_VFX_2.run()
-            time.sleep(60)  # Interval trigger time
+        time.sleep(60)  # Interval trigger time
 
 if __name__ == "__main__":
     main("20:45","23:45","1:45")

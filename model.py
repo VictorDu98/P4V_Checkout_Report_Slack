@@ -43,6 +43,7 @@ class Model:
         for entry in JSON["info"]:
             if entry["Department"] not in self.department:
                 self.department.append(entry["Department"])
+
         #print(self.department)
 
     def __str__(self):
@@ -86,26 +87,9 @@ class Model:
         config = f"""
         P4PORT= "perforce:1666"
         P4USER= "p4user"
-        P4CHARSET= "utf-8"
+        P4CHARSET= "utf8"
+        P4CLIENT="p4client"
         """
-        with open(self.perforce_config, 'w') as file:
-            file.write(config)
-
-    def remove(self):
-        if self.check_exist(self.preset_config):
-            shutil.rmtree(self.preset_config)
-            print(f"Deleted preset: {self.name}")
-
-    def set_perforce_config(self, port, user, client, charset):
-        config = f"""
-        P4PORT= "{port}"
-        P4USER= "{user}"
-        P4CLIENT= "{client}"
-        P4CHARSET= "{charset}"
-        """
-        if not self.check_exist(self.perforce_config):
-            raise FileNotFoundError(f"File {self.perforce_config} does not exist.")
-
         with open(self.perforce_config, 'w') as file:
             file.write(config)
 
@@ -127,18 +111,15 @@ class Model:
         [1] Current file depot address - [2] Status - [3] Changelist numbers - [4] Client name
 
         """
-        JSON= self.open_json()
-        json_accounts = []
-        for entry in JSON["info"]:
-            json_accounts.append(entry["AccountName"])
+
 
         output_log = os.path.join(self.output_root, f"log_{self.name}_{formatted_date}.txt")
 
         if self.check_exist(output_log):
-            print("Found old log, deleting...")
+            print(f"Found old log from {self.name}, deleting...")
             os.remove(output_log)
 
-        os.system(f"p4 set P4CONFIG={self.perforce_config}")
+        os.system(f"p4 set P4CONFIG={self.perforce_config}") #Switch to preset p4config
         p4 = P4()
         try:
             p4.connect()  # Connect to the Perforce server
@@ -147,10 +128,14 @@ class Model:
             for e in p4.errors:  # Display errors
                 raise e
 
+        JSON= self.open_json()
+        json_accounts = []
+        for entry in JSON["info"]:
+            json_accounts.append(entry["AccountName"])
+
         for name in json_accounts:
             # Run the `p4 opened -u <user>` command
             found_files = p4.run_opened("-u", name)
-            #print(found_files)
             if not found_files:
                 continue
             with open(output_log, 'a', encoding='utf-8') as f:
@@ -168,26 +153,28 @@ class Model:
     def trace_workspace(string_list: list):
         """
         Use regex expression to match lines that include "edit"
-        and extract the workspace names.
+        to extract the workspace names.
 
         :param string_list: Lines from a log file.
         :return: A set of workspace names that matched.
         """
-        pattern = re.compile(r"^.+ - edit - CL (\d+|default) - ([A-Za-z0-9_]+)")
+        pattern = re.compile(r"^.+ - edit - CL (\d+|default) - ([A-Za-z0-9._]+)")
 
         workspaces = []
-
         for line in string_list:
             match = pattern.match(line.strip())
             if match:
                 workspace_name = match.group(2)
-                #print(workspace_name)
                 if workspace_name not in workspaces:
                     workspaces.append(workspace_name)
 
         return workspaces
 
-    def trace_user(self):
+    def trace_user(self)->list:
+        """
+
+        :return:
+        """
         if not self.check_exist(self.output_log):
             return None
 
@@ -207,36 +194,35 @@ class Model:
                 return None
             
             for found_workspace in result:
-                #print(found_workspace)
                 i=0
                 for json_workspace in json_workspaces:
                     if re.match(found_workspace, json_workspace):
                         users_index.append(i)
                     i=i+1
-            #print(users_index)
             return users_index
 
     def generate_report(self,department:str):
         output_report = os.path.join(self.output_root, f"report_{department}_{formatted_date}.txt")
         if self.check_exist(output_report):
-            print("Found old report, deleting ...")
+            print(f"Found old report from {self.name}, deleting ...")
             os.remove(output_report)
 
         JSON = self.open_json()
-        users_found = self.trace_user()
-        if users_found:
-            for user in users_found:
-                if JSON['info'][user]['Department'] == department:
-                    report = f"{JSON['info'][user]['Project']} - {JSON['info'][user]['UserName']} - {JSON['info'][user]['WorkSpace']} - {JSON['info'][user]['Email']}"
+        users_found_index = self.trace_user()
+        if users_found_index:
+            for user_index in users_found_index:
+                if JSON['info'][user_index]['Department'] == department:
+                    report = f"{JSON['info'][user_index]['Project']} - {JSON['info'][user_index]['UserName']} - {JSON['info'][user_index]['WorkSpace']} - {JSON['info'][user_index]['Email']}"
                     with open(output_report, 'a', encoding='utf-8') as f:
                         f.write(report + "\n")
-        else:
-            print("No user found")
+
+    @staticmethod
+    def gen_color():
+        hex_color = hex(random.randrange(0, 2 ** 24))
+        std_color = "#" + hex_color[2:]
+        return std_color
 
     def send_slack(self,department):
-        hex_color = hex(random.randrange(0, 2**24))
-        std_color = "#" + hex_color[2:]
-
         output_report = os.path.join(self.output_root, f"report_{department}_{formatted_date}.txt")
         if not self.check_exist(output_report):
             return
@@ -247,7 +233,7 @@ class Model:
                 "attachments": [
                     {
                         "text": f"{contents} CC: <@{self.producer_slack_id}>",
-                        "color": f"{std_color}",
+                        "color": f"{self.gen_color()}",
                         "author_name": f"{department}",
                         "fallback": f"Hello  <@{self.producer_slack_id}>, please help notify these artists about their P4V checked out files."
                     }
@@ -266,7 +252,7 @@ class Model:
         self.generate_log()
         for department in self.department:
             self.generate_report(department=department)
-            self.send_slack(department=department)
+            #self.send_slack(department=department)
 
 def main(*args):
     print("Running P4V Checkout tool")
@@ -287,4 +273,5 @@ def main(*args):
         time.sleep(60)  # Interval trigger time
 
 if __name__ == "__main__":
-    main("20:45","23:45","1:45")
+    #main("20:45","23:45","01:45")
+    GFH = Model("GFH")

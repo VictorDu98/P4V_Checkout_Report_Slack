@@ -18,36 +18,40 @@ PRESET_DIR= os.path.join(ROOT_DIR,"presets")
 class Model:
     """
     1. READ CONTENT FROM PRESET JSON CONFIG
-    2. GENERATE LOG
-    3. TRACE WORKSPACE
-    4. TRACE USER FROM WORKSPACE FOUND
-    5. GENERATE REPORT
-    6 .SEND SLACK
+    2. LOGIN P4 WITH .P4TICKET
+    3. GENERATE LOG
+    4. TRACE WORKSPACE
+    5. TRACE USER FROM WORKSPACE FOUND
+    6. GENERATE REPORT
+    7 .SEND SLACK
 
     """
     def __init__(self, name):
         self.name = name
         self.preset_root = os.path.join(PRESET_DIR, name)
+        self.preset_ticket = os.path.join(self.preset_root, ".p4tickets")
         self.preset_config = os.path.join(self.preset_root, "config.json")
-        self.perforce_config = os.path.join(self.preset_root, ".p4config")
+        self.preset_p4config = os.path.join(self.preset_root, ".p4config")
         if not os.path.exists(self.preset_root):
             os.makedirs(self.preset_root, exist_ok=True)
             self.create_template()
 
-        JSON = self.open_json()
-        self.output_root = JSON["misc"][0]["OutputLogAndReport"]
-        self.output_log = os.path.join(self.output_root, f"log_{self.name}_{formatted_date}.txt")
-        self.slack_uri = JSON["misc"][0]["SlackUri"]
-        self.producer_slack_id = JSON["misc"][0]["Producer"]
-        self.department = []
-        self.json_accounts=[]
-        self.json_workspaces=[]
-        for entry in JSON["info"]:
-            if entry["Department"] not in self.department:
-                self.department.append(entry["Department"])
-            self.json_workspaces.append(entry["WorkSpace"])
-            self.json_accounts.append(entry["AccountName"])
+        with open(self.preset_config, "r", encoding="utf-8") as f:
+            JSON= json.load(f)
+            self.output_root = JSON["misc"][0]["OutputLogAndReport"]
+            self.output_log = os.path.join(self.output_root, f"log_{self.name}_{formatted_date}.txt")
+            self.slack_uri = JSON["misc"][0]["SlackUri"]
+            self.producer_slack_id = JSON["misc"][0]["Producer"]
+            self.department = []
+            self.json_accounts=[]
+            self.json_workspaces=[]
+            for entry in JSON["info"]:
+                if entry["Department"] not in self.department:
+                    self.department.append(entry["Department"])
+                self.json_workspaces.append(entry["WorkSpace"])
+                self.json_accounts.append(entry["AccountName"])
 
+        self.p4  = None
 
     def __str__(self):
         return self.name
@@ -93,7 +97,7 @@ class Model:
         P4CHARSET= "utf8"
         P4CLIENT="p4client"
         """
-        with open(self.perforce_config, 'w') as file:
+        with open(self.preset_p4config, 'w') as file:
             file.write(config)
 
     def open_json(self):
@@ -103,14 +107,37 @@ class Model:
         return json.load(f)
 
     def init_p4(self):
-        os.system(f"p4 set P4CONFIG={self.perforce_config}")  # Switch to preset p4config
-        p4 = P4()
-        try:
-            p4.connect()  # Connect to the Perforce server
-            print("Login p4 success")
-        except P4Exception as e:
-            for e in p4.errors:  # Display errors
-                raise e
+        os.system(f"p4 set P4CONFIG={self.preset_p4config}")  # Switch to preset p4config
+        if not self.check_exist(self.preset_ticket):
+            self.create_p4ticket()
+        else:
+            self.p4 = P4()
+            self.p4.ticket_file = self.preset_ticket
+            try:
+                if not self.p4.connected():
+                    self.p4.connect()  # Connect to the Perforce server
+            except P4Exception:
+                for e in self.p4.errors:  # Display errors
+                    raise e
+
+    def create_p4ticket(self):
+        self.p4  = P4()
+        retries = 3
+        while True:
+            if retries == 0:
+                self.p4 = None
+                return
+            self.p4.ticket_file = self.preset_ticket
+            self.p4.password = input(f"Enter your {self.name} P4 Password : ")
+            try:
+                if not self.p4.connected():
+                    self.p4.connect()  # Connect to the Perforce server
+                self.p4.run_login()
+                break
+            except P4Exception:
+                for e in self.p4.errors:  # Display errors
+                    print(e)
+                retries = retries - 1
 
 
     def generate_log(self):
@@ -130,18 +157,12 @@ class Model:
             print(f"Found old log from {self.name}, deleting...")
             os.remove(output_log)
 
-        os.system(f"p4 set P4CONFIG={self.perforce_config}") #Switch to preset p4config
-        p4 = P4()
-        try:
-            p4.connect()  # Connect to the Perforce server
-            print("Login p4 success")
-        except P4Exception as e:
-            for e in p4.errors:  # Display errors
-                raise e
+        if not self.p4.connected():
+            self.p4.connect()  # Connect to the Perforce server
 
         for name in self.json_accounts:
             # Run the `p4 opened -u <user>` command
-            found_files = p4.run_opened("-u", name)
+            found_files = self.p4.run_opened("-u", name)
             if not found_files:
                 continue
             with open(output_log, 'a', encoding='utf-8') as f:
@@ -153,7 +174,7 @@ class Model:
                         client = file.get("client", "unknown")
                         f.write(f"{depot_file} - edit - CL {changelist} - {client}\n")
                 f.write("\n")
-        p4.disconnect()
+        self.p4.disconnect()
 
     @staticmethod
     def trace_workspace(string_list: list):
@@ -207,11 +228,13 @@ class Model:
         users_found_index = self.trace_user()
         if users_found_index:
             for user_index in users_found_index:
-                user=JSON['info'][user_index]
+                user= JSON['info'][user_index]
                 if user['Department'] == department:
                     report = f"{user['Project']} - {user['UserName']} - {user['WorkSpace']} - {user['Email']}"
                     with open(output_report, 'a', encoding='utf-8') as f:
                         f.write(report + "\n")
+        else:
+            print(f"No user found on {self.name}")
 
     @staticmethod
     def gen_color():
@@ -244,10 +267,15 @@ class Model:
                 print(f"Failed to send message. Status code: {response.status_code}, Response: {response.text}")
 
     def run(self):
-        self.generate_log()
-        for department in self.department:
-            self.generate_report(department=department)
-            self.send_slack(department=department)
+        self.init_p4()
+        if self.p4:
+            self.generate_log()
+            for department in self.department:
+                self.generate_report(department=department)
+                self.send_slack(department=department)
+        else:
+            print(f"{self.name} P4 is invalid, job skipped.")
+
 
 def main(*args):
     while True:
@@ -268,3 +296,5 @@ def main(*args):
 
 if __name__ == "__main__":
     main("20:45","23:45","01:45")
+    # TODO : Overcome p4trust
+    # TODO : Separate main function into new file

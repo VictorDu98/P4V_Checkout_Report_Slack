@@ -9,9 +9,6 @@ import time
 from datetime import datetime
 from P4 import P4, P4Exception
 
-formatted_date = datetime.now().strftime("%y%m%d")
-#target_time = "15:06"
-
 ROOT_DIR= os.path.dirname(os.path.realpath(__file__))
 PRESET_DIR= os.path.join(ROOT_DIR,"presets")
 
@@ -39,7 +36,7 @@ class Model:
         with open(self.preset_config, "r", encoding="utf-8") as f:
             JSON= json.load(f)
             self.output_root = JSON["misc"][0]["OutputLogAndReport"]
-            self.output_log = os.path.join(self.output_root, f"log_{self.name}_{formatted_date}.txt")
+            self.output_log = os.path.join(self.output_root, f"log_{self.name}_{self.get_time()}.txt")
             self.slack_uri = JSON["misc"][0]["SlackUri"]
             self.producer_slack_id = JSON["misc"][0]["Producer"]
             self.department = []
@@ -57,8 +54,47 @@ class Model:
         return self.name
 
     @staticmethod
+    def get_time():
+        return datetime.now().strftime("%y%m%d")
+
+    @staticmethod
     def check_exist(path):
         return os.path.exists(path)
+
+    @staticmethod
+    def trace_workspace(string_list: list):
+        """
+        Use regex expression to match lines that include "edit"
+        to extract the workspace names.
+
+        :param string_list: Lines from a log file.
+        :return: A set of workspace names that matched.
+        """
+        pattern = re.compile(r"^.+ - edit - CL (\d+|default) - ([A-Za-z0-9._]+)")
+        workspaces = []
+        for line in string_list:
+            match = pattern.match(line.strip())
+            if match:
+                workspace_name = match.group(2)
+                if workspace_name not in workspaces:
+                    workspaces.append(workspace_name)
+
+        return workspaces
+
+    @staticmethod
+    def compare_data(x,y):
+        users_index = []
+        for found_workspace in x:
+            i = 0
+            for json_workspace in y:
+                if re.match(found_workspace, json_workspace):
+                    users_index.append(i)
+                i = i + 1
+        return users_index
+
+    @staticmethod
+    def gen_color():
+        return hex(random.randrange(0, 2 ** 24))[2:]
 
     def create_template(self):
         dic = {
@@ -152,7 +188,7 @@ class Model:
         [1] Current file depot address - [2] Status - [3] Changelist numbers - [4] Client name
 
         """
-        output_log = os.path.join(self.output_root, f"log_{self.name}_{formatted_date}.txt")
+        output_log = os.path.join(self.output_root, f"log_{self.name}_{self.get_time()}.txt")
         if self.check_exist(output_log):
             print(f"Found old log from {self.name}, deleting...")
             os.remove(output_log)
@@ -176,37 +212,6 @@ class Model:
                 f.write("\n")
         self.p4.disconnect()
 
-    @staticmethod
-    def trace_workspace(string_list: list):
-        """
-        Use regex expression to match lines that include "edit"
-        to extract the workspace names.
-
-        :param string_list: Lines from a log file.
-        :return: A set of workspace names that matched.
-        """
-        pattern = re.compile(r"^.+ - edit - CL (\d+|default) - ([A-Za-z0-9._]+)")
-        workspaces = []
-        for line in string_list:
-            match = pattern.match(line.strip())
-            if match:
-                workspace_name = match.group(2)
-                if workspace_name not in workspaces:
-                    workspaces.append(workspace_name)
-
-        return workspaces
-
-    @staticmethod
-    def compare_data(x,y):
-        users_index = []
-        for found_workspace in x:
-            i = 0
-            for json_workspace in y:
-                if re.match(found_workspace, json_workspace):
-                    users_index.append(i)
-                i = i + 1
-        return users_index
-
     def trace_user(self)->list:
         if not self.check_exist(self.output_log):
             return None
@@ -219,7 +224,7 @@ class Model:
             return self.compare_data(result , self.json_workspaces)
 
     def generate_report(self,department:str):
-        output_report = os.path.join(self.output_root, f"report_{department}_{formatted_date}.txt")
+        output_report = os.path.join(self.output_root, f"report_{department}_{self.get_time()}.txt")
         if self.check_exist(output_report):
             print(f"Found old report from {self.name}, deleting ...")
             os.remove(output_report)
@@ -236,9 +241,7 @@ class Model:
         else:
             print(f"No user found on {self.name}")
 
-    @staticmethod
-    def gen_color():
-        return hex(random.randrange(0, 2 ** 24))[2:]
+
 
     def gen_payload(self,output_report,department):
         with open(output_report) as f:
@@ -256,7 +259,7 @@ class Model:
             return payload
 
     def send_slack(self,department):
-        output_report = os.path.join(self.output_root, f"report_{department}_{formatted_date}.txt")
+        output_report = os.path.join(self.output_root, f"report_{department}_{self.get_time()}.txt")
 
         if self.check_exist(output_report):
             # Send the POST request to Slack
@@ -276,25 +279,7 @@ class Model:
         else:
             print(f"{self.name} P4 is invalid, job skipped.")
 
-
-def main(*args):
-    while True:
-        current_time = time.strftime("%H:%M")
-        for arg in args:
-            if current_time == arg:
-                GFH = Model("GFH")
-                ISN_ENV_1 = Model("ISN_ENV_1")
-                ISN_ENV_2 = Model("ISN_ENV_2")
-                ISN_VFX_1 = Model("ISN_VFX_1")
-                ISN_VFX_2 = Model("ISN_VFX_2")
-                GFH.run()
-                ISN_ENV_1.run()
-                ISN_ENV_2.run()
-                ISN_VFX_1.run()
-                ISN_VFX_2.run()
-        time.sleep(60)  # Interval trigger time
-
 if __name__ == "__main__":
-    main("20:45","23:45","01:45")
+    pass
     # TODO : Overcome p4trust
     # TODO : Separate main function into new file

@@ -37,8 +37,8 @@ class Model:
             JSON= json.load(f)
             self.output_root = JSON["misc"][0]["OutputLogAndReport"]
             self.output_log = os.path.join(self.output_root, f"log_{self.name}_{self.get_time()}.txt")
-            self.slack_uri = JSON["misc"][0]["SlackUri"]
-            self.producer_slack_id = JSON["misc"][0]["Producer"]
+            self.slack_uri = JSON["misc"][0]["SlackIncomingWebhook"]
+            self.producer_slack_id = JSON["misc"][0]["SlackProducerID"]
             self.department = []
             self.json_accounts=[]
             self.json_workspaces=[]
@@ -152,9 +152,12 @@ class Model:
             try:
                 if not self.p4.connected():
                     self.p4.connect()  # Connect to the Perforce server
+                self.p4.run_opened()
+
             except P4Exception:
                 for e in self.p4.errors:  # Display errors
-                    raise e
+                    print(self.name,e)
+                self.p4 = None
 
     def create_p4ticket(self):
         self.p4  = P4()
@@ -174,7 +177,6 @@ class Model:
                 for e in self.p4.errors:  # Display errors
                     print(e)
                 retries = retries - 1
-
 
     def generate_log(self):
         """
@@ -240,8 +242,6 @@ class Model:
                         f.write(report + "\n")
         else:
             print(f"No user found on {self.name}")
-
-
 
     def gen_payload(self,output_report,department):
         with open(output_report) as f:

@@ -37,8 +37,7 @@ class Model:
             JSON= json.load(f)
             self.output_root = JSON["misc"][0]["OutputLogAndReport"]
             self.output_log = os.path.join(self.output_root, f"log_{self.name}_{self.get_time()}.txt")
-            self.slack_uri = JSON["misc"][0]["SlackIncomingWebhook"]
-            self.producer_slack_id = JSON["misc"][0]["SlackProducerID"]
+            self.webhook = JSON["misc"][0]["Webhook"]
             self.department = []
             self.json_accounts=[]
             self.json_workspaces=[]
@@ -257,7 +256,7 @@ class Model:
 
     def send_teams(self,department):
         """
-        :param department: Text file suffix, identical with preset config.json key "Department" value . e.g : VFX/ENV/CHA
+        :param department: Text file suffix, must identical with preset config.json key "Department" value . e.g : VFX/ENV/CHA
         :return:
         """
         output_report = os.path.join(self.output_root, f"report_{department}_{self.get_time()}.txt")
@@ -271,7 +270,7 @@ class Model:
                 }
             # Send the POST request to Slack
             response = requests.post(
-                teams_webhook,
+                self.webhook,
                 data=json.dumps(payload),
                 headers={'Content-Type': 'application/json'}
             )

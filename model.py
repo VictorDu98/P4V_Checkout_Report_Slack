@@ -143,6 +143,10 @@ class Model:
         return json.load(f)
 
     def init_p4(self):
+        """
+
+        :return:
+        """
         os.system(f"p4 set P4CONFIG={self.preset_p4config}")  # Switch to preset p4config
         if not self.check_exist(self.preset_ticket):
             self.create_p4ticket()
@@ -160,12 +164,17 @@ class Model:
                 self.p4 = None
 
     def create_p4ticket(self):
+        """
+        Attempt to create new preset .p4ticket if not have any , skip init p4 module if failed 3 times
+        :return:
+        """
         self.p4  = P4()
         retries = 3
         while True:
             if retries == 0:
                 self.p4 = None
                 return
+
             self.p4.ticket_file = self.preset_ticket
             self.p4.password = input(f"Enter your {self.name} P4 Password : ")
             try:
@@ -233,41 +242,43 @@ class Model:
 
         JSON = self.open_json()
         users_found_index = self.trace_user()
-        if users_found_index:
-            for user_index in users_found_index:
-                user= JSON['info'][user_index]
-                if user['Department'] == department:
-                    report = f"{user['Project']} - {user['UserName']} - {user['WorkSpace']} - {user['Email']}"
-                    with open(output_report, 'a', encoding='utf-8') as f:
-                        f.write(report + "\n")
-        else:
-            print(f"No user found on {self.name}")
+        with open(output_report, 'a', encoding='utf-8') as f:
+            if users_found_index:
+                for num_index, user_index in enumerate(users_found_index):
+                    user= JSON['info'][user_index]
+                    if user['Department'] == department:
+                        report = f"{user['Project']}-{user['UserName']}-{user['WorkSpace']}-{user['Email']}"
+                        if num_index == len(users_found_index)-1:
+                                f.write(report)
+                        else:
+                                f.write(report+ "\n")
+            else:
+                print(f"No user found on {self.name}")
 
-    def gen_payload(self,output_report,department):
-        with open(output_report) as f:
-            contents = f.read()
-            payload = {
-                "attachments": [
-                    {
-                        "text": f"{contents} CC: <@{self.producer_slack_id}>",
-                        "color": f"#{self.gen_color()}",
-                        "author_name": f"{department}",
-                        "fallback": f"Hello  <@{self.producer_slack_id}>, please help notify these artists about their P4V checked out files."
-                    }
-                ]
-            }
-            return payload
-
-    def send_slack(self,department):
+    def send_teams(self,department):
+        """
+        :param department: Text file suffix, identical with preset config.json key "Department" value . e.g : VFX/ENV/CHA
+        :return:
+        """
         output_report = os.path.join(self.output_root, f"report_{department}_{self.get_time()}.txt")
+        teams_webhook = 'https://prod-93.southeastasia.logic.azure.com:443/workflows/7aaf012f794f47a4be63ff3e35fa9877/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=8yHEY2BHprJlXKYQKCsI92qXucAa7BkgaLTzX7POYSc'
 
         if self.check_exist(output_report):
+            with open(output_report) as f:
+                contents = f.read()
+                payload = {
+                    "text": contents
+                }
             # Send the POST request to Slack
-            response = requests.post(self.slack_uri, json=self.gen_payload(output_report,department), headers={'Content-Type': 'application/json'})
-            if response.status_code == 200:
-                print("Message sent successfully!")
+            response = requests.post(
+                teams_webhook,
+                data=json.dumps(payload),
+                headers={'Content-Type': 'application/json'}
+            )
+            if response.status_code == 202:
+                print("Payload sent successfully!")
             else:
-                print(f"Failed to send message. Status code: {response.status_code}, Response: {response.text}")
+                print(f"Failed to send payload. Status code: {response.status_code}, Response: {response.text}")
 
     def run(self):
         self.init_p4()
@@ -275,7 +286,7 @@ class Model:
             self.generate_log()
             for department in self.department:
                 self.generate_report(department=department)
-                self.send_slack(department=department)
+                self.send_teams(department=department)
         else:
             print(f"{self.name} P4 is invalid, job skipped.")
 

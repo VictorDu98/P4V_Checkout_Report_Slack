@@ -26,7 +26,7 @@ class Model:
     def __init__(self, name):
         self.name = name
         self.preset_root = os.path.join(PRESET_DIR, name)
-        self.preset_ticket = os.path.join(self.preset_root, ".p4tickets")
+        self.preset_p4ticket = os.path.join(self.preset_root, ".p4tickets")
         self.preset_config = os.path.join(self.preset_root, "config.json")
         self.preset_p4config = os.path.join(self.preset_root, ".p4config")
         if not os.path.exists(self.preset_root):
@@ -147,11 +147,11 @@ class Model:
         :return:
         """
         os.system(f"p4 set P4CONFIG={self.preset_p4config}")  # Switch to preset p4config
-        if not self.check_exist(self.preset_ticket):
+        if not self.check_exist(self.preset_p4ticket):
             self.create_p4ticket()
         else:
             self.p4 = P4()
-            self.p4.ticket_file = self.preset_ticket
+            self.p4.ticket_file = self.preset_p4ticket
             try:
                 if not self.p4.connected():
                     self.p4.connect()  # Connect to the Perforce server
@@ -174,7 +174,7 @@ class Model:
                 self.p4 = None
                 return
 
-            self.p4.ticket_file = self.preset_ticket
+            self.p4.ticket_file = self.preset_p4ticket
             self.p4.password = input(f"Enter your {self.name} P4 Password : ")
             try:
                 if not self.p4.connected():
@@ -260,7 +260,6 @@ class Model:
         :return:
         """
         output_report = os.path.join(self.output_root, f"report_{department}_{self.get_time()}.txt")
-        teams_webhook = 'https://prod-93.southeastasia.logic.azure.com:443/workflows/7aaf012f794f47a4be63ff3e35fa9877/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=8yHEY2BHprJlXKYQKCsI92qXucAa7BkgaLTzX7POYSc'
 
         if self.check_exist(output_report):
             with open(output_report) as f:

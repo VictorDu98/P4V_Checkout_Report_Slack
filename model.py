@@ -6,7 +6,7 @@ import json
 import re
 import random
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from P4 import P4, P4Exception
 
 ROOT_DIR= os.path.dirname(os.path.realpath(__file__))
@@ -36,7 +36,7 @@ class Model:
         with open(self.preset_config, "r", encoding="utf-8") as f:
             JSON= json.load(f)
             self.output_root = JSON["misc"][0]["OutputLogAndReport"]
-            self.output_log = os.path.join(self.output_root, f"log_{self.name}_{self.get_time()}.txt")
+            self.output_log = os.path.join(self.output_root, f"log_{self.name}_{self.get_date()}.txt")
             self.webhook = JSON["misc"][0]["Webhook"]
             self.department = []
             self.json_accounts=[]
@@ -53,8 +53,16 @@ class Model:
         return self.name
 
     @staticmethod
-    def get_time():
+    def get_date():
         return datetime.now().strftime("%y%m%d")
+
+    @staticmethod
+    def get_time():
+
+        # Define UTC+7 timezone
+        utc_plus_7 = timezone(timedelta(hours=7))
+
+        return datetime.now(utc_plus_7).strftime("%I:%M %p")
 
     @staticmethod
     def check_exist(path):
@@ -99,9 +107,8 @@ class Model:
         dic = {
             "misc":[
                 {
-                    "OutputLogAndReport": "Project address on server network",
-                    "SlackUri": "Slack incoming webhook",
-                    "Producer": "Producer slack id"
+                    "OutputLogAndReport": "Output address to store logs and report",
+                    "Webhook": "Microsoft Teams Workflow incoming webhook"
                 }
             ],
             "info":[
@@ -116,7 +123,6 @@ class Model:
                     {
                         "UserName": "Artist real name",
                         "AccountName": "Artist P4V account name",
-                        "Project": "Project name",
                         "Department": "ENV/VFX/LIGHTING/RIGGING/CHARACTER/...",
                         "Email": "Artist email",
                         "WorkSpace": "Artist P4V workspace name"
@@ -198,7 +204,7 @@ class Model:
         [1] Current file depot address - [2] Status - [3] Changelist numbers - [4] Client name
 
         """
-        output_log = os.path.join(self.output_root, f"log_{self.name}_{self.get_time()}.txt")
+        output_log = os.path.join(self.output_root, f"log_{self.name}_{self.get_date()}.txt")
         if self.check_exist(output_log):
             print(f"Found old log from {self.name}, deleting...")
             os.remove(output_log)
@@ -234,7 +240,7 @@ class Model:
             return self.compare_data(result , self.json_workspaces)
 
     def generate_report(self,department:str):
-        output_report = os.path.join(self.output_root, f"report_{department}_{self.get_time()}.txt")
+        output_report = os.path.join(self.output_root, f"report_{department}_{self.get_date()}.txt")
         if self.check_exist(output_report):
             print(f"Found old report from {self.name}, deleting ...")
             os.remove(output_report)
@@ -243,26 +249,29 @@ class Model:
         users_found_index = self.trace_user()
         with open(output_report, 'a', encoding='utf-8') as f:
             if users_found_index:
+                f.write(f"Các bạn này đang checkout file P4V vào lúc {self.get_time()} 🚨<br><br>")
                 for num_index, user_index in enumerate(users_found_index):
                     user= JSON['info'][user_index]
+
                     if user['Department'] == department:
-                        report = f"{user['Project']}-{user['UserName']}-{user['WorkSpace']}-{user['Email']}"
+                        report = f"<at>{user['Email']}</at>"
+
                         if num_index == len(users_found_index)-1:
                                 f.write(report)
+                                f.write("<br><br>Vào đây xem log để biết file nào đang checkout nè:<br>"+  self.output_log)
                         else:
-                                f.write(report+ "\n")
+                                f.write(report+ "<br>")
             else:
                 print(f"No user found on {self.name}")
 
     def send_teams(self,department):
         """
         :param department: Text file suffix, must identical with preset config.json key "Department" value . e.g : VFX/ENV/CHA
-        :return:
         """
-        output_report = os.path.join(self.output_root, f"report_{department}_{self.get_time()}.txt")
+        output_report = os.path.join(self.output_root, f"report_{department}_{self.get_date()}.txt")
 
         if self.check_exist(output_report):
-            with open(output_report) as f:
+            with open(output_report, encoding='utf-8') as f:
                 contents = f.read()
                 payload = {
                     "text": contents
@@ -281,7 +290,7 @@ class Model:
     def run(self):
         self.init_p4()
         if self.p4:
-            self.generate_log()
+            #self.generate_log()
             for department in self.department:
                 self.generate_report(department=department)
                 self.send_teams(department=department)

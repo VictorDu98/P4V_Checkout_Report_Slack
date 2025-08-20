@@ -20,7 +20,7 @@ class Model:
     4. TRACE WORKSPACE
     5. TRACE USER FROM WORKSPACE FOUND
     6. GENERATE REPORT
-    7 .SEND SLACK
+    7 .SEND PAYLOAD
 
     """
     def __init__(self, name):
@@ -111,13 +111,13 @@ class Model:
                     {
                         "AccountName": "Artist P4V account name",
                         "Department": "ENV/VFX/LIGHTING/RIGGING/CHARACTER/...",
-                        "Email": "Artist email",
+                        "Email": "Artist @virtuosgames email",
                         "WorkSpace": "Artist P4V workspace name"
                     },
                     {
                         "AccountName": "Artist P4V account name",
                         "Department": "ENV/VFX/LIGHTING/RIGGING/CHARACTER/...",
-                        "Email": "Artist email",
+                        "Email": "Artist  @virtuosgames email",
                         "WorkSpace": "Artist P4V workspace name"
                     }
             ]
@@ -291,5 +291,4 @@ class Model:
 
 if __name__ == "__main__":
     pass
-    # TODO : Overcome p4trust
-    # TODO : Separate main function into new file
+    # TODO : Separate p4python elements from main class into separate class

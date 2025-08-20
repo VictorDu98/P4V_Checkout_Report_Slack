@@ -9,14 +9,8 @@ def main(*args):
                 GFH = model.Model("GFH")
                 GFH.run()
 
-                ISN_ENV_1 = model.Model("ISN_ENV_1")
-                ISN_ENV_1.run()
-
                 ISN_ENV_2 = model.Model("ISN_ENV_2")
                 ISN_ENV_2.run()
-
-                ISN_VFX_1 = model.Model("ISN_VFX_1")
-                ISN_VFX_1.run()
 
                 ISN_VFX_2 = model.Model("ISN_VFX_2")
                 ISN_VFX_2.run()

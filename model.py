@@ -99,10 +99,6 @@ class Model:
                 i = i + 1
         return users_index
 
-    @staticmethod
-    def gen_color():
-        return hex(random.randrange(0, 2 ** 24))[2:]
-
     def create_template(self):
         dic = {
             "misc":[
@@ -113,15 +109,12 @@ class Model:
             ],
             "info":[
                     {
-                        "UserName": "Artist real name",
                         "AccountName": "Artist P4V account name",
-                        "Project": "Project name",
                         "Department": "ENV/VFX/LIGHTING/RIGGING/CHARACTER/...",
                         "Email": "Artist email",
                         "WorkSpace": "Artist P4V workspace name"
                     },
                     {
-                        "UserName": "Artist real name",
                         "AccountName": "Artist P4V account name",
                         "Department": "ENV/VFX/LIGHTING/RIGGING/CHARACTER/...",
                         "Email": "Artist email",
@@ -141,17 +134,13 @@ class Model:
         with open(self.preset_p4config, 'w') as file:
             file.write(config)
 
-    def open_json(self):
+    def open_preset_config_json(self):
         if not self.check_exist(self.preset_config):
             raise FileNotFoundError(f"File {self.preset_config} does not exist.")
         f = open(self.preset_config, "r", encoding="utf-8")
         return json.load(f)
 
     def init_p4(self):
-        """
-
-        :return:
-        """
         os.system(f"p4 set P4CONFIG={self.preset_p4config}")  # Switch to preset p4config
         if not self.check_exist(self.preset_p4ticket):
             self.create_p4ticket()
@@ -170,7 +159,7 @@ class Model:
 
     def create_p4ticket(self):
         """
-        Attempt to create new preset .p4ticket if not have any , skip init p4 module if failed 3 times
+        Attempt to create new preset .p4ticket if not have any , skip init p4 module if it failed 3 times
         :return:
         """
         self.p4  = P4()
@@ -245,11 +234,14 @@ class Model:
             print(f"Found old report from {self.name}, deleting ...")
             os.remove(output_report)
 
-        JSON = self.open_json()
+        JSON = self.open_preset_config_json()
         users_found_index = self.trace_user()
-        with open(output_report, 'a', encoding='utf-8') as f:
-            if users_found_index:
+
+        if users_found_index:
+            with open(output_report, 'a', encoding='utf-8') as f:
+
                 f.write(f"Các bạn này đang checkout file P4V vào lúc {self.get_time()} 🚨<br><br>")
+
                 for num_index, user_index in enumerate(users_found_index):
                     user= JSON['info'][user_index]
 
@@ -261,8 +253,8 @@ class Model:
                                 f.write("<br><br>Vào đây xem log để biết file nào đang checkout nè:<br>"+  self.output_log)
                         else:
                                 f.write(report+ "<br>")
-            else:
-                print(f"No user found on {self.name}")
+        else:
+            print(f"No user found on {self.name}")
 
     def send_teams(self,department):
         """
@@ -290,7 +282,7 @@ class Model:
     def run(self):
         self.init_p4()
         if self.p4:
-            #self.generate_log()
+            self.generate_log()
             for department in self.department:
                 self.generate_report(department=department)
                 self.send_teams(department=department)

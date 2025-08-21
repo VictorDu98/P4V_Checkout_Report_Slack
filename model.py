@@ -193,10 +193,9 @@ class Model:
         [1] Current file depot address - [2] Status - [3] Changelist numbers - [4] Client name
 
         """
-        output_log = os.path.join(self.output_root, f"log_{self.name}_{self.get_date()}.txt")
-        if self.check_exist(output_log):
+        if self.check_exist(self.output_log):
             print(f"Found old log from {self.name}, deleting...")
-            os.remove(output_log)
+            os.remove(self.output_log)
 
         if not self.p4.connected():
             self.p4.connect()  # Connect to the Perforce server
@@ -206,7 +205,7 @@ class Model:
             found_files = self.p4.run_opened("-u", name)
             if not found_files:
                 continue
-            with open(output_log, 'a', encoding='utf-8') as f:
+            with open(self.output_log, 'a', encoding='utf-8') as f:
                 f.write(f"------------------------- {name} ----------------------------\n")
                 for file in found_files:
                     if file.get("action") == "edit":
@@ -265,6 +264,8 @@ class Model:
         if self.check_exist(output_report):
             with open(output_report, encoding='utf-8') as f:
                 contents = f.read()
+                ## Be aware dictionary variable itself can't contain single backslash , it will be output as double backslash unless we print the dictionary[key]
+                ## We have to do additional text-processing on Workflow, by replace double backslash to single backslash, so we can post a correct "self.output_log" UNC path on message post.
                 payload = {
                     "text": contents
                 }

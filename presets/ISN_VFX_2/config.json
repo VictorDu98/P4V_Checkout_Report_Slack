@@ -1,0 +1,106 @@
+{
+    "misc": [
+        {
+            "OutputLogAndReport": "\\\\virtuosgames.com\\spxprojects\\I38\\11_Technical\\P4V\\P4CheckOutReport",
+            "Webhook": "https://prod-83.southeastasia.logic.azure.com:443/workflows/168d4fdc066e4648956f179fe6b1a39b/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=lLocyZysHZkHKBxA-LGWe5MEsu4TrWPxZigYevOCA8o"
+        }
+    ],
+    "info": [
+        {
+            "AccountName": "sang.tran",
+            "Department":"VFX",
+            "Email": "vinhsinh@virtuosgames.com",
+            "WorkSpace":"sinhthinh_VNSPXW1001_i38"
+        },
+        {
+            "AccountName": "quy.nguyen",
+            "Department":"VFX",
+            "Email": "quy.nguyen@virtuosgames.com",
+            "WorkSpace":"quy.nguyen_vietw554_i38"
+        },
+        {
+            "AccountName": "an.nguyen_b",
+            "Department":"VFX",
+            "Email": "an.nguyen_b@virtuosgames.com",
+            "WorkSpace":"an.nguyen_bc_vnspxw1096_i38"
+        },
+        {
+            "AccountName": "sang.tran",
+            "Department":"VFX",
+            "Email": "sang.tran@virtuosgames.com",
+            "WorkSpace":"sang.tran_vnspxw0895_i38"
+        },
+        {
+            "AccountName": "nhan.dang",
+            "Department":"VFX",
+            "Email": "nhan.dang@virtuosgames.com",
+            "WorkSpace":"nhan.dang_vnspxw0725_i39"
+        },
+        {
+            "AccountName": "nhan.dang",
+            "Department":"VFX",
+            "Email": "nhan.dang@virtuosgames.com",
+            "WorkSpace":"nhan.dang_vnspxw0725_i38"
+        },
+        {
+            "AccountName": "vi.le",
+            "Department":"VFX",
+            "Email": "vi.le@virtuosgames.com",
+            "WorkSpace":"vi.le_VNSPXW0811_i39"
+        },
+        {
+            "AccountName": "vi.le",
+            "Department":"VFX",
+            "Email": "vi.le@virtuosgames.com",
+            "WorkSpace":"vi.le_VNSPXW0811_i38"
+        },
+        {
+            "AccountName": "hung.nguyen_e",
+            "Department":"VFX",
+            "Email": "hung.nguyen_e@virtuosgames.com",
+            "WorkSpace":"hung.nguyen_e_VNSPXW0954_i38"
+        },
+		{
+            "AccountName": "hung.nguyen_e",
+            "Department":"VFX",
+            "Email": "luan.le@virtuosgames.com",
+            "WorkSpace":"luan.le_VNSPXW0780_i38"
+        },
+        {
+            "AccountName": "nguyen.nguyen_b",
+            "Department":"VFX",
+            "Email": "nguyen.nguyen_b@virtuosgames.com",
+            "WorkSpace":"nguyen.nguyen_b_vnspxw1062_i40"
+        },
+        {
+            "AccountName": "nguyen.nguyen_b",
+            "Department":"VFX",
+            "Email": "nguyen.nguyen_b@virtuosgames.com",
+            "WorkSpace":"nguyen.nguyen_b_vnspxw1062_i38"
+        },
+        {
+            "AccountName": "anh.truong",
+            "Department":"VFX",
+            "Email": "anh.truong@virtuosgames.com",
+            "WorkSpace":"anh.truong_vnspxw0660_i40"
+        },
+        {
+            "AccountName": "hung.nguyen_e",
+            "Department":"VFX",
+            "Email": "vinhsinh@virtuosgames.com",
+            "WorkSpace":"vinhsinh_VNSPXW1001_i38"
+        },
+        {
+            "AccountName": "minhnhat",
+            "Department":"VFX",
+            "Email": "minhnhat@virtuosgames.com",
+            "WorkSpace":"minhnhat_vietw806_i38"
+        },
+        {
+            "AccountName": "hung.nguyen_e",
+            "Department":"VFX",
+            "Email": "vulinh@virtuosgames.com",
+            "WorkSpace":"vulinh_VNSPXW0841_i38"
+        }
+    ]
+}

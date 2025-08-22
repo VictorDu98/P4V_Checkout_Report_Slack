@@ -14,13 +14,26 @@ PRESET_DIR= os.path.join(ROOT_DIR,"presets")
 
 class Model:
     """
+    This class handle P4Python and text processes logic to generate HTTP payload with specific XML syntax for Microsoft Teams Workflow.
+    To process payload raw data and make it compatible with Microsoft Teams Workflow , an additional steps in Workflow or Power Automate is required.
+
+    By using P4Python, this class use .p4ticket to bypass password login phase, each preset will have it own .p4ticket , so make sure preset .p4ticket ít valid and not expired.
+    To use this, inherit this class to make new class instance, a class instance will look up presets/ [class_instance_variable_name] ".p4config" and "config.json" contents to pass arguments into methods.
+            You can either create a preset manually by clone the preset template folder, then adjust the config for the preset.
+            or define a class instance and run the script to trigger "create_template" method from class instance alone, then go to the preset folder to adjust preset config
+
+
+    In simple term of code flow , it will run like this:
     1. READ CONTENT FROM PRESET JSON CONFIG
     2. LOGIN P4 WITH .P4TICKET
     3. GENERATE LOG
     4. TRACE WORKSPACE
     5. TRACE USER FROM WORKSPACE FOUND
     6. GENERATE REPORT
-    7 .SEND PAYLOAD
+    7 .SEND PAYLOAD VIA HTTP POST
+    8. [Teams workflows side] Unpack payload
+    9. [Teams workflows side] Replace double backslashes with single backslash
+    10. [Teams workflows side]  Post message to channel
 
     """
     def __init__(self, name):
@@ -100,6 +113,10 @@ class Model:
         return users_index
 
     def create_template(self):
+        """
+        Write new template config files ".p4config" and "config.json" in preset folder
+
+        """
         dic = {
             "misc":[
                 {
@@ -141,6 +158,11 @@ class Model:
         return json.load(f)
 
     def init_p4(self):
+        """
+        Force system environment to use preset ".p4config" and ".p4ticket" , if P4 status is online then return P4Python object
+        :return: P4Python object stored to "self.p4" class attribute
+
+        """
         os.system(f"p4 set P4CONFIG={self.preset_p4config}")  # Switch to preset p4config
         if not self.check_exist(self.preset_p4ticket):
             self.create_p4ticket()
@@ -159,8 +181,7 @@ class Model:
 
     def create_p4ticket(self):
         """
-        Attempt to create new preset .p4ticket if not have any , skip init p4 module if it failed 3 times
-        :return:
+        Attempt to login into P4 server to create new preset .p4ticket if not have any, return P4Python object or None if failed.
         """
         self.p4  = P4()
         retries = 3
@@ -190,7 +211,8 @@ class Model:
         //depot/scripts/script.py - edit - CL 12347 - bob_ws
 
         ------------------------- P4 Username ----------------------------
-        [1] Current file depot address - [2] Status - [3] Changelist numbers - [4] Client name
+        [1] Current file depot address - [2] Status - [3] Changelist numbers - [4] Workspace name
+
 
         """
         if self.check_exist(self.output_log):
@@ -217,6 +239,10 @@ class Model:
         self.p4.disconnect()
 
     def trace_user(self)->list:
+        """
+        Proceed to match data from log contents with preset "config.json" Workspace name's
+        :return: List of indexes of key "Workspace" from "config.json"
+        """
         if not self.check_exist(self.output_log):
             return None
 
@@ -228,6 +254,11 @@ class Model:
             return self.compare_data(result , self.json_workspaces)
 
     def generate_report(self,department:str):
+        """
+        From log file generated from "generate_log" method, generate new text file that report whitelisted users leaving file's P4 checkout
+        :param department: Text file suffix, must identical with preset config.json key "Department" value . e.g : VFX/ENV/CHA
+
+        """
         output_report = os.path.join(self.output_root, f"report_{department}_{self.get_date()}.txt")
         if self.check_exist(output_report):
             print(f"Found old report from {self.name}, deleting ...")
@@ -255,7 +286,7 @@ class Model:
         else:
             print(f"No user found on {self.name}")
 
-    def send_teams(self,department):
+    def send_teams(self,department:str):
         """
         :param department: Text file suffix, must identical with preset config.json key "Department" value . e.g : VFX/ENV/CHA
         """
@@ -281,6 +312,9 @@ class Model:
                 print(f"Failed to send payload. Status code: {response.status_code}, Response: {response.text}")
 
     def run(self):
+        """
+        This method to handle class logic by running them in order. Should be only method class instance run.
+        """
         self.init_p4()
         if self.p4:
             self.generate_log()

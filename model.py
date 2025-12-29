@@ -9,6 +9,9 @@ import time
 from datetime import datetime, timedelta, timezone
 from P4 import P4, P4Exception
 from abc import ABC, abstractmethod
+from logger import setup_logger
+import logging
+
 
 ROOT_DIR= os.path.dirname(os.path.realpath(__file__))
 PRESET_DIR= os.path.join(ROOT_DIR,"presets")
@@ -35,16 +38,19 @@ class Preset(ABC):
         self._load_config()
         self.p4 = None
 
+        self.logger = setup_logger(
+            name=self.name,
+            log_dir=os.path.join(self.preset_root, "logs"),
+            level=logging.DEBUG
+        )
+        self.logger.info("Model initialized")
+
     def __str__(self):
         return self.name
 
     # ==========================
     # Abstract contract
     # ==========================
-
-    @abstractmethod
-    def create_template(self):
-        pass
 
     @abstractmethod
     def init_p4(self):
@@ -59,7 +65,7 @@ class Preset(ABC):
         pass
 
     @abstractmethod
-    def send_teams(self, department: str):
+    def send_requests(self, department: str):
         pass
 
     # ==========================
@@ -88,7 +94,7 @@ class Preset(ABC):
             self.json_accounts.append(entry["AccountName"])
 
     # ==========================
-    # Static helpers (unchanged)
+    # Static helpers
     # ==========================
 
     @staticmethod
@@ -131,9 +137,6 @@ class Preset(ABC):
         with open(self.preset_config, "r", encoding="utf-8") as f:
             return json.load(f)
 
-
-class Model(Preset):
-
     def create_template(self):
         dic = {
             "misc": [
@@ -164,10 +167,16 @@ P4CHARSET=utf8
 P4CLIENT=p4client
 """)
 
+
+class Model(Preset):
+
     def init_p4(self):
+
+        self.logger.info("Initializing P4")
         os.system(f"p4 set P4CONFIG={self.preset_p4config}")
 
         if not self.check_exist(self.preset_p4ticket):
+            self.logger.warning("P4 ticket not found, starting login")
             self.create_p4ticket()
             return
 
@@ -178,10 +187,13 @@ P4CLIENT=p4client
             if not self.p4.connected():
                 self.p4.connect()
             self.p4.run_opened()
+            self.logger.info("P4 connected successfully")
         except P4Exception:
+            self.logger.exception("P4 connection failed")
             self.p4 = None
 
     def create_p4ticket(self):
+        self.logger.info("Creating new P4 ticket")
         self.p4 = P4()
         self.p4.ticket_file = self.preset_p4ticket
 
@@ -191,19 +203,26 @@ P4CLIENT=p4client
             try:
                 self.p4.connect()
                 self.p4.run_login()
+                self.logger.info("P4 login successful")
                 return
             except P4Exception:
                 retries -= 1
+                self.logger.warning("P4 login failed, retries left: %s", retries)
 
+        self.logger.critical("P4 login failed after all retries")
         self.p4 = None
 
     def generate_log(self):
+        self.logger.info("Generating P4 opened files log")
+
         if self.check_exist(self.output_log):
+            self.logger.debug("Removing old log file")
             os.remove(self.output_log)
 
         self.p4.connect()
 
         for user in self.json_accounts:
+            self.logger.debug("Checking opened files for user: %s", user)
             files = self.p4.run_opened("-u", user)
             if not files:
                 continue
@@ -218,6 +237,7 @@ P4CLIENT=p4client
                 f.write("\n")
 
         self.p4.disconnect()
+        self.logger.info("Log generation completed")
 
     def trace_user(self):
         if not self.check_exist(self.output_log):
@@ -229,6 +249,7 @@ P4CLIENT=p4client
         return self.compare_data(found, self.json_workspaces)
 
     def generate_report(self, department: str):
+        self.logger.info("Generating report for department: %s", department)
         output = os.path.join(
             self.output_root,
             f"report_{department}_{self.get_date()}.txt"
@@ -241,6 +262,7 @@ P4CLIENT=p4client
         users = self.trace_user()
 
         if not users:
+            self.logger.info("No users found for department: %s", department)
             return
 
         with open(output, "w", encoding="utf-8") as f:
@@ -251,34 +273,49 @@ P4CLIENT=p4client
                     f.write(f"<at>{user['Email']}</at><br>")
             f.write("<br>Xem log tại:<br>" + self.output_log)
 
-    def send_teams(self, department: str):
-        output = os.path.join(
-            self.output_root,
-            f"report_{department}_{self.get_date()}.txt"
-        )
+        self.logger.info("Report generation completed")
 
-        if not self.check_exist(output):
-            return
+    def send_requests(self, department: str):
+        """
+        :param department: Text file suffix, must identical with preset config.json key "Department" value . e.g : VFX/ENV/CHA
+        """
+        output_report = os.path.join(self.output_root, f"report_{department}_{self.get_date()}.txt")
 
-        with open(output, encoding="utf-8") as f:
-            payload = {"text": f.read()}
-
-        requests.post(
-            self.webhook,
-            data=json.dumps(payload),
-            headers={"Content-Type": "application/json"}
-        )
+        if self.check_exist(output_report):
+            with open(output_report, encoding='utf-8') as f:
+                contents = f.read()
+                ## Be aware dictionary variable itself can't contain single backslash , it will be output as double backslash unless we print the dictionary[key]
+                ## We have to do additional text-processing on Workflow, by replace double backslash to single backslash, so we can post a correct "self.output_log" UNC path on message post.
+                payload = {
+                    "text": contents
+                }
+            # Send the POST request to Slack
+            response = requests.post(
+                self.webhook,
+                data=json.dumps(payload),
+                headers={'Content-Type': 'application/json'}
+            )
+            if response.status_code == 202:
+                self.logger.info("Teams payload sent successfully")
+            else:
+                self.logger.error(
+                    "Teams payload failed | status=%s | response=%s",
+                    response.status_code,
+                    response.text
+                )
 
     def run(self):
+        self.logger.info("Job started")
         self.init_p4()
         if not self.p4:
-            print(f"{self.name} P4 invalid, skipped.")
+            self.logger.critical("P4 invalid, job aborted")
             return
 
         self.generate_log()
         for dept in self.department:
             self.generate_report(dept)
-            self.send_teams(dept)
+            self.send_requests(dept)
+        self.logger.info("Job finished successfully")
 
 
 if __name__ == "__main__":

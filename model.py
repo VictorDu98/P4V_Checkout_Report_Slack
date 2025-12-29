@@ -216,7 +216,7 @@ class Model(Preset):
         self.logger.info("Generating P4 opened files log")
 
         if self.check_exist(self.output_log):
-            self.logger.debug("Removing old log file")
+            self.logger.warning(f"Old log file from {self.name} found, removing...")
             os.remove(self.output_log)
 
         self.p4.connect()
@@ -227,6 +227,7 @@ class Model(Preset):
             if not files:
                 continue
 
+            self.logger.debug("User found: %s", user)
             with open(self.output_log, "a", encoding="utf-8") as f:
                 f.write(f"------------------------- {user} ----------------------------\n")
                 for file in files:
@@ -234,6 +235,7 @@ class Model(Preset):
                         f.write(
                             f"{file['depotFile']} - edit - CL {file['change']} - {file['client']}\n"
                         )
+                        self.logger.debug(f"{file['depotFile']} - edit - CL {file['change']} - {file['client']}")
                 f.write("\n")
 
         self.p4.disconnect()
@@ -256,6 +258,7 @@ class Model(Preset):
         )
 
         if self.check_exist(output):
+            self.logger.warning(f"Old report found from department {department}, deleting...")
             os.remove(output)
 
         JSON = self.open_preset_config_json()
@@ -273,7 +276,7 @@ class Model(Preset):
                     f.write(f"<at>{user['Email']}</at><br>")
             f.write("<br>Xem log tại:<br>" + self.output_log)
 
-        self.logger.info("Report generation completed")
+        self.logger.info(f"Report generation for department {department} completed")
 
     def send_requests(self, department: str):
         """

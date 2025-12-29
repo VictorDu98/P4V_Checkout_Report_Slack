@@ -1,11 +1,7 @@
 import os
-import sys
-import shutil
 import requests
 import json
 import re
-import random
-import time
 from datetime import datetime, timedelta, timezone
 from P4 import P4, P4Exception
 from abc import ABC, abstractmethod

@@ -8,9 +8,13 @@ import random
 import time
 from datetime import datetime, timedelta, timezone
 from P4 import P4, P4Exception
+from abc import ABC, abstractmethod
 
 ROOT_DIR= os.path.dirname(os.path.realpath(__file__))
 PRESET_DIR= os.path.join(ROOT_DIR,"presets")
+
+class Preset(ABC):
+    pass
 
 class Model:
     """
@@ -24,13 +28,14 @@ class Model:
 
 
     In simple term of code flow , it will run like this:
-    1. READ CONTENT FROM PRESET JSON CONFIG
+    1. CLASS ACCEPT CONTENT FROM PRESET JSON CONFIG TO CLASS ATTRIBUTE
     2. LOGIN P4 WITH .P4TICKET
+        2.1 iF .P4TICKET IS NOT EXIST IN PRESET, A P4 LOGIN SESSION WILL BE TRIGGERED
     3. GENERATE LOG
     4. TRACE WORKSPACE
     5. TRACE USER FROM WORKSPACE FOUND
     6. GENERATE REPORT
-    7 .SEND PAYLOAD VIA HTTP POST
+    7 .SEND PAYLOAD VIA HTTP POST. THIS IS WHERE SCRIPT END
     8. [Teams workflows side] Unpack payload
     9. [Teams workflows side] Replace double backslashes with single backslash
     10. [Teams workflows side]  Post message to channel
@@ -120,23 +125,24 @@ class Model:
         dic = {
             "misc":[
                 {
-                    "OutputLogAndReport": "Output address to store logs and report",
-                    "Webhook": "Microsoft Teams Workflow incoming webhook"
+                "OutputLogAndReport": "Output address to store logs and report",
+                "Webhook": "Microsoft Teams Workflow incoming webhook"
                 }
             ],
             "info":[
-                    {
-                        "AccountName": "Artist P4V account name",
-                        "Department": "ENV/VFX/LIGHTING/RIGGING/CHARACTER/...",
-                        "Email": "Artist @virtuosgames email",
-                        "WorkSpace": "Artist P4V workspace name"
-                    },
-                    {
-                        "AccountName": "Artist P4V account name",
-                        "Department": "ENV/VFX/LIGHTING/RIGGING/CHARACTER/...",
-                        "Email": "Artist  @virtuosgames email",
-                        "WorkSpace": "Artist P4V workspace name"
-                    }
+                {
+                    "AccountName": "Artist P4V account name",
+                    "UserName": "User real name - optional and can excluded in config",
+                   "Department": "ENV/VFX/LIGHTING/RIGGING/CHARACTER/...",
+                    "Email": "Artist @virtuosgames.com email , must be @virtuogames.com otherwise Teams Workflow can't tag user on channel",
+                    "WorkSpace": "Artist P4V workspace name"
+                },
+                {
+                    "AccountName": "Artist P4V account name",
+                   "Department": "ENV/VFX/LIGHTING/RIGGING/CHARACTER/...",
+                    "Email": "Artist @virtuosgames email",
+                    "WorkSpace": "Artist P4V workspace name"
+                }
             ]
         }
         with open(self.preset_config, 'w') as file:
@@ -253,6 +259,10 @@ class Model:
                 return None
             return self.compare_data(result , self.json_workspaces)
 
+    def validate_config(self):
+        #TODO : Develop validate procedural for preset config
+        pass
+
     def generate_report(self,department:str):
         """
         From log file generated from "generate_log" method, generate new text file that report whitelisted users leaving file's P4 checkout
@@ -276,8 +286,10 @@ class Model:
                     user= JSON['info'][user_index]
 
                     if user['Department'] == department:
-                        report = f"<at>{user['Email']}</at>"
-
+                        try:
+                            report = f"<at>{user['Email']}</at> - {user['UserName']} - {user['WorkSpace']}" # TODO : Make seperate logic to handle custom payload instead of hardcode
+                        except:
+                            report = f"<at>{user['Email']}</at>"
                         if num_index == len(users_found_index)-1:
                                 f.write(report)
                                 f.write("<br><br>Vào đây xem log để biết file nào đang checkout nè:<br>"+  self.output_log)
@@ -296,11 +308,12 @@ class Model:
             with open(output_report, encoding='utf-8') as f:
                 contents = f.read()
                 ## Be aware dictionary variable itself can't contain single backslash , it will be output as double backslash unless we print the dictionary[key]
-                ## We have to do additional text-processing on Workflow, by replace double backslash to single backslash, so we can post a correct "self.output_log" UNC path on message post.
+                ## We have to do additional text-processing on Workflow,
+                # By replace double backslash to single backslash, we can post a correct "self.output_log" UNC path on message post.
                 payload = {
                     "text": contents
                 }
-            # Send the POST request to Slack
+            # Send the POST request
             response = requests.post(
                 self.webhook,
                 data=json.dumps(payload),
@@ -313,7 +326,7 @@ class Model:
 
     def run(self):
         """
-        This method to handle class logic by running them in order. Should be only method class instance run.
+        This method to handle class logic by running them in order.
         """
         self.init_p4()
         if self.p4:

@@ -6,7 +6,7 @@ import model
         Any class instance has .p4tickets of it own expired will not stop the script, it will be skipped and printed error on terminal for debug purpose.
                 Try to delete the .p4tickets and run that class instance separately to generate a new one.
                 The current script terminal will use the new .p4tickets for the next time class instance is triggered.
-        Pass the time into main function to set trigger time.
+        Pass the time as string parameter into main function to set trigger time.
 """
 
 def main(*args):
@@ -14,8 +14,6 @@ def main(*args):
         current_time = time.strftime("%H:%M")
         for arg in args:
             if current_time == arg:
-                GFH = model.Model("GFH")
-                GFH.run()
 
                 ISN_ENV_2 = model.Model("ISN_ENV_2")
                 ISN_ENV_2.run()

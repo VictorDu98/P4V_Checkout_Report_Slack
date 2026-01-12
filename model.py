@@ -1,97 +1,74 @@
 import os
+import sys
+import shutil
 import requests
 import json
 import re
+import random
+import time
 from datetime import datetime, timedelta, timezone
 from P4 import P4, P4Exception
 from abc import ABC, abstractmethod
-from logger import setup_logger
-import logging
-
 
 ROOT_DIR= os.path.dirname(os.path.realpath(__file__))
 PRESET_DIR= os.path.join(ROOT_DIR,"presets")
 
 class Preset(ABC):
-    """
-    Abstract base class for P4 and MS Teams workflow models.
-    Defines structure, lifecycle, and shared helpers.
-    """
+    pass
 
-    def __init__(self, name: str):
+class Model:
+    """
+    This class handle P4Python and text processes logic to generate HTTP payload with specific XML syntax for Microsoft Teams Workflow.
+    To process payload raw data and make it compatible with Microsoft Teams Workflow , an additional steps in Workflow or Power Automate is required.
+
+    By using P4Python, this class use .p4ticket to bypass password login phase, each preset will have it own .p4ticket , so make sure preset .p4ticket ít valid and not expired.
+    To use this, inherit this class to make new class instance, a class instance will look up presets/ [class_instance_variable_name] ".p4config" and "config.json" contents to pass arguments into methods.
+            You can either create a preset manually by clone the preset template folder, then adjust the config for the preset.
+            or define a class instance and run the script to trigger "create_template" method from class instance alone, then go to the preset folder to adjust preset config
+
+
+    In simple term of code flow , it will run like this:
+    1. CLASS ACCEPT CONTENT FROM PRESET JSON CONFIG TO CLASS ATTRIBUTE
+    2. LOGIN P4 WITH .P4TICKET
+        2.1 iF .P4TICKET IS NOT EXIST IN PRESET, A P4 LOGIN SESSION WILL BE TRIGGERED
+    3. GENERATE LOG
+    4. TRACE WORKSPACE
+    5. TRACE USER FROM WORKSPACE FOUND
+    6. GENERATE REPORT
+    7 .SEND PAYLOAD VIA HTTP POST. THIS IS WHERE SCRIPT END
+    8. [Teams workflows side] Unpack payload
+    9. [Teams workflows side] Replace double backslashes with single backslash
+    10. [Teams workflows side]  Post message to channel
+
+    """
+    def __init__(self, name):
         self.name = name
-
-        # ---- Preset paths
         self.preset_root = os.path.join(PRESET_DIR, name)
         self.preset_p4ticket = os.path.join(self.preset_root, ".p4tickets")
         self.preset_config = os.path.join(self.preset_root, "config.json")
         self.preset_p4config = os.path.join(self.preset_root, ".p4config")
-
         if not os.path.exists(self.preset_root):
             os.makedirs(self.preset_root, exist_ok=True)
             self.create_template()
 
-        self._load_config()
-        self.p4 = None
+        with open(self.preset_config, "r", encoding="utf-8") as f:
+            JSON= json.load(f)
+            self.output_root = JSON["misc"][0]["OutputLogAndReport"]
+            self.output_log = os.path.join(self.output_root, f"log_{self.name}_{self.get_date()}.txt")
+            self.webhook = JSON["misc"][0]["Webhook"]
+            self.department = []
+            self.json_accounts=[]
+            self.json_workspaces=[]
+            for entry in JSON["info"]:
+                if entry["Department"] not in self.department:
+                    self.department.append(entry["Department"])
+                self.json_workspaces.append(entry["WorkSpace"])
+                self.json_accounts.append(entry["AccountName"])
 
-        self.logger = setup_logger(
-            name=self.name,
-            log_dir=os.path.join(self.preset_root, "logs"),
-            level=logging.DEBUG
-        )
-        self.logger.info("Model initialized")
+        self.p4  = None
 
     def __str__(self):
         return self.name
-
-    # ==========================
-    # Abstract contract
-    # ==========================
-
-    @abstractmethod
-    def init_p4(self):
-        pass
-
-    @abstractmethod
-    def generate_log(self):
-        pass
-
-    @abstractmethod
-    def generate_report(self, department: str):
-        pass
-
-    @abstractmethod
-    def send_requests(self, department: str):
-        pass
-
-    # ==========================
-    # Shared logic
-    # ==========================
-
-    def _load_config(self):
-        with open(self.preset_config, "r", encoding="utf-8") as f:
-            JSON = json.load(f)
-
-        self.output_root = JSON["misc"][0]["OutputLogAndReport"]
-        self.webhook = JSON["misc"][0]["Webhook"]
-        self.output_log = os.path.join(
-            self.output_root,
-            f"log_{self.name}_{self.get_date()}.txt"
-        )
-
-        self.department = []
-        self.json_accounts = []
-        self.json_workspaces = []
-
-        for entry in JSON["info"]:
-            if entry["Department"] not in self.department:
-                self.department.append(entry["Department"])
-            self.json_workspaces.append(entry["WorkSpace"])
-            self.json_accounts.append(entry["AccountName"])
-
-    # ==========================
-    # Static helpers
-    # ==========================
 
     @staticmethod
     def get_date():
@@ -99,7 +76,10 @@ class Preset(ABC):
 
     @staticmethod
     def get_time():
+
+        # Define UTC+7 timezone
         utc_plus_7 = timezone(timedelta(hours=7))
+
         return datetime.now(utc_plus_7).strftime("%I:%M %p")
 
     @staticmethod
@@ -108,173 +88,217 @@ class Preset(ABC):
 
     @staticmethod
     def trace_workspace(string_list: list):
+        """
+        Use regex expression to match lines that include "edit"
+        to extract the workspace names.
+
+        :param string_list: Lines from a log file.
+        :return: A set of workspace names that matched.
+        """
         pattern = re.compile(r"^.+ - edit - CL (\d+|default) - ([A-Za-z0-9._]+)")
         workspaces = []
         for line in string_list:
             match = pattern.match(line.strip())
             if match:
-                ws = match.group(2)
-                if ws not in workspaces:
-                    workspaces.append(ws)
+                workspace_name = match.group(2)
+                if workspace_name not in workspaces:
+                    workspaces.append(workspace_name)
+
         return workspaces
 
     @staticmethod
-    def compare_data(found, config):
+    def compare_data(x,y):
         users_index = []
-        for found_ws in found:
-            for i, json_ws in enumerate(config):
-                if re.match(found_ws, json_ws):
+        for found_workspace in x:
+            i = 0
+            for json_workspace in y:
+                if re.match(found_workspace, json_workspace):
                     users_index.append(i)
+                i = i + 1
         return users_index
 
-    def open_preset_config_json(self):
-        if not self.check_exist(self.preset_config):
-            raise FileNotFoundError(self.preset_config)
-        with open(self.preset_config, "r", encoding="utf-8") as f:
-            return json.load(f)
-
     def create_template(self):
+        """
+        Write new template config files ".p4config" and "config.json" in preset folder
+
+        """
         dic = {
-            "misc": [
+            "misc":[
                 {
-                    "OutputLogAndReport": "Output address to store logs and report",
-                    "Webhook": "Microsoft Teams Workflow incoming webhook"
+                "OutputLogAndReport": "Output address to store logs and report",
+                "Webhook": "Microsoft Teams Workflow incoming webhook"
                 }
             ],
-            "info": [
+            "info":[
                 {
                     "AccountName": "Artist P4V account name",
-                    "UserName": "User real name",
-                    "Department": "ENV/VFX/LIGHTING",
-                    "Email": "artist@virtuosgames.com",
-                    "WorkSpace": "workspace_name"
+                    "UserName": "User real name - optional and can excluded in config",
+                   "Department": "ENV/VFX/LIGHTING/RIGGING/CHARACTER/...",
+                    "Email": "Artist @virtuosgames.com email , must be @virtuogames.com otherwise Teams Workflow can't tag user on channel",
+                    "WorkSpace": "Artist P4V workspace name"
+                },
+                {
+                    "AccountName": "Artist P4V account name",
+                   "Department": "ENV/VFX/LIGHTING/RIGGING/CHARACTER/...",
+                    "Email": "Artist @virtuosgames email",
+                    "WorkSpace": "Artist P4V workspace name"
                 }
             ]
         }
+        with open(self.preset_config, 'w') as file:
+            file.write(json.dumps(dic, indent=4))
 
-        with open(self.preset_config, "w", encoding="utf-8") as f:
-            json.dump(dic, f, indent=4)
+        config = f"""
+        P4PORT= "perforce:1666"
+        P4USER= "p4user"
+        P4CHARSET= "utf8"
+        P4CLIENT="p4client"
+        """
+        with open(self.preset_p4config, 'w') as file:
+            file.write(config)
 
-        with open(self.preset_p4config, "w") as f:
-            f.write("""
-P4PORT=perforce:1666
-P4USER=p4user
-P4CHARSET=utf8
-P4CLIENT=p4client
-""")
-
-
-class Model(Preset):
+    def open_preset_config_json(self):
+        if not self.check_exist(self.preset_config):
+            raise FileNotFoundError(f"File {self.preset_config} does not exist.")
+        f = open(self.preset_config, "r", encoding="utf-8")
+        return json.load(f)
 
     def init_p4(self):
+        """
+        Force system environment to use preset ".p4config" and ".p4ticket" , if P4 status is online then return P4Python object
+        :return: P4Python object stored to "self.p4" class attribute
 
-        self.logger.info("Initializing P4")
-        os.system(f"p4 set P4CONFIG={self.preset_p4config}")
-
+        """
+        os.system(f"p4 set P4CONFIG={self.preset_p4config}")  # Switch to preset p4config
         if not self.check_exist(self.preset_p4ticket):
-            self.logger.warning("P4 ticket not found, starting login")
             self.create_p4ticket()
-            return
+        else:
+            self.p4 = P4()
+            self.p4.ticket_file = self.preset_p4ticket
+            try:
+                if not self.p4.connected():
+                    self.p4.connect()  # Connect to the Perforce server
+                self.p4.run_opened()
 
-        self.p4 = P4()
-        self.p4.ticket_file = self.preset_p4ticket
-
-        try:
-            if not self.p4.connected():
-                self.p4.connect()
-            self.p4.run_opened()
-            self.logger.info("P4 connected successfully")
-        except P4Exception:
-            self.logger.exception("P4 connection failed")
-            self.p4 = None
+            except P4Exception:
+                for e in self.p4.errors:  # Display errors
+                    print(self.name,e)
+                self.p4 = None
 
     def create_p4ticket(self):
-        self.logger.info("Creating new P4 ticket")
-        self.p4 = P4()
-        self.p4.ticket_file = self.preset_p4ticket
-
+        """
+        Attempt to login into P4 server to create new preset .p4ticket if not have any, return P4Python object or None if failed.
+        """
+        self.p4  = P4()
         retries = 3
-        while retries > 0:
-            self.p4.password = input(f"Enter {self.name} P4 password: ")
-            try:
-                self.p4.connect()
-                self.p4.run_login()
-                self.logger.info("P4 login successful")
+        while True:
+            if retries == 0:
+                self.p4 = None
                 return
-            except P4Exception:
-                retries -= 1
-                self.logger.warning("P4 login failed, retries left: %s", retries)
 
-        self.logger.critical("P4 login failed after all retries")
-        self.p4 = None
+            self.p4.ticket_file = self.preset_p4ticket
+            self.p4.password = input(f"Enter your {self.name} P4 Password : ")
+            try:
+                if not self.p4.connected():
+                    self.p4.connect()  # Connect to the Perforce server
+                self.p4.run_login()
+                break
+            except P4Exception:
+                for e in self.p4.errors:  # Display errors
+                    print(e)
+                retries = retries - 1
 
     def generate_log(self):
-        self.logger.info("Generating P4 opened files log")
+        """
+        ------------------------- alice ----------------------------
+        //depot/project/file1.cpp  - edit - CL 12345 - alice_workspace
 
+        ------------------------- bob ----------------------------
+        //depot/scripts/script.py - edit - CL 12347 - bob_ws
+
+        ------------------------- P4 Username ----------------------------
+        [1] Current file depot address - [2] Status - [3] Changelist numbers - [4] Workspace name
+
+
+        """
         if self.check_exist(self.output_log):
-            self.logger.warning(f"Old log file from {self.name} found, removing...")
+            print(f"Found old log from {self.name}, deleting...")
             os.remove(self.output_log)
 
-        self.p4.connect()
+        if not self.p4.connected():
+            self.p4.connect()  # Connect to the Perforce server
 
-        for user in self.json_accounts:
-            self.logger.debug("Checking opened files for user: %s", user)
-            files = self.p4.run_opened("-u", user)
-            if not files:
+        for name in self.json_accounts:
+            # Run the `p4 opened -u <user>` command
+            found_files = self.p4.run_opened("-u", name)
+            if not found_files:
                 continue
-
-            self.logger.debug("User found: %s", user)
-            with open(self.output_log, "a", encoding="utf-8") as f:
-                f.write(f"------------------------- {user} ----------------------------\n")
-                for file in files:
+            with open(self.output_log, 'a', encoding='utf-8') as f:
+                f.write(f"------------------------- {name} ----------------------------\n")
+                for file in found_files:
                     if file.get("action") == "edit":
-                        f.write(
-                            f"{file['depotFile']} - edit - CL {file['change']} - {file['client']}\n"
-                        )
-                        self.logger.debug(f"{file['depotFile']} - edit - CL {file['change']} - {file['client']}")
+                        depot_file = file.get("depotFile", "unknown")
+                        changelist = file.get("change", "unknown")
+                        client = file.get("client", "unknown")
+                        f.write(f"{depot_file} - edit - CL {changelist} - {client}\n")
                 f.write("\n")
-
         self.p4.disconnect()
-        self.logger.info("Log generation completed")
 
-    def trace_user(self):
+    def trace_user(self)->list:
+        """
+        Proceed to match data from log contents with preset "config.json" Workspace name's
+        :return: List of indexes of key "Workspace" from "config.json"
+        """
         if not self.check_exist(self.output_log):
             return None
 
         with open(self.output_log, "r", encoding="utf-8") as f:
-            contents = [line.strip() for line in f]
-        found = self.trace_workspace(contents)
-        return self.compare_data(found, self.json_workspaces)
+            contents = [line.strip() for line in f] #quick fix to remove all \n in string
+            result = self.trace_workspace(contents)
+            if result is None:
+                return None
+            return self.compare_data(result , self.json_workspaces)
 
-    def generate_report(self, department: str):
-        self.logger.info("Generating report for department: %s", department)
-        output = os.path.join(
-            self.output_root,
-            f"report_{department}_{self.get_date()}.txt"
-        )
+    def validate_config(self):
+        #TODO : Develop validate procedural for preset config
+        pass
 
-        if self.check_exist(output):
-            self.logger.warning(f"Old report found from department {department}, deleting...")
-            os.remove(output)
+    def generate_report(self,department:str):
+        """
+        From log file generated from "generate_log" method, generate new text file that report whitelisted users leaving file's P4 checkout
+        :param department: Text file suffix, must identical with preset config.json key "Department" value . e.g : VFX/ENV/CHA
+
+        """
+        output_report = os.path.join(self.output_root, f"report_{department}_{self.get_date()}.txt")
+        if self.check_exist(output_report):
+            print(f"Found old report from {self.name}, deleting ...")
+            os.remove(output_report)
 
         JSON = self.open_preset_config_json()
-        users = self.trace_user()
+        users_found_index = self.trace_user()
 
-        if not users:
-            self.logger.info("No users found for department: %s", department)
-            return
+        if users_found_index:
+            with open(output_report, 'a', encoding='utf-8') as f:
 
-        with open(output, "w", encoding="utf-8") as f:
-            f.write(f"Các bạn này đang checkout file P4V lúc {self.get_time()} 🚨<br><br>")
-            for i in users:
-                user = JSON["info"][i]
-                if user["Department"] == department:
-                    f.write(f"<at>{user['Email']}</at><br>")
-            f.write("<br>Xem log tại:<br>" + self.output_log)
+                f.write(f"Các bạn này đang checkout file P4V vào lúc {self.get_time()} 🚨<br><br>")
 
-        self.logger.info(f"Report generation for department {department} completed")
+                for num_index, user_index in enumerate(users_found_index):
+                    user= JSON['info'][user_index]
 
-    def send_requests(self, department: str):
+                    if user['Department'] == department:
+                        try:
+                            report = f"<at>{user['Email']}</at> - {user['UserName']} - {user['WorkSpace']}" # TODO : Make seperate logic to handle custom payload instead of hardcode
+                        except:
+                            report = f"<at>{user['Email']}</at>"
+                        if num_index == len(users_found_index)-1:
+                                f.write(report)
+                                f.write("<br><br>Vào đây xem log để biết file nào đang checkout nè:<br>"+  self.output_log)
+                        else:
+                                f.write(report+ "<br>")
+        else:
+            print(f"No user found on {self.name}")
+
+    def send_teams(self,department:str):
         """
         :param department: Text file suffix, must identical with preset config.json key "Department" value . e.g : VFX/ENV/CHA
         """
@@ -284,38 +308,34 @@ class Model(Preset):
             with open(output_report, encoding='utf-8') as f:
                 contents = f.read()
                 ## Be aware dictionary variable itself can't contain single backslash , it will be output as double backslash unless we print the dictionary[key]
-                ## We have to do additional text-processing on Workflow, by replace double backslash to single backslash, so we can post a correct "self.output_log" UNC path on message post.
+                ## We have to do additional text-processing on Workflow,
+                # By replace double backslash to single backslash, we can post a correct "self.output_log" UNC path on message post.
                 payload = {
                     "text": contents
                 }
-            # Send the POST request to Slack
+            # Send the POST request
             response = requests.post(
                 self.webhook,
                 data=json.dumps(payload),
                 headers={'Content-Type': 'application/json'}
             )
             if response.status_code == 202:
-                self.logger.info("Teams payload sent successfully")
+                print("Payload sent successfully!")
             else:
-                self.logger.error(
-                    "Teams payload failed | status=%s | response=%s",
-                    response.status_code,
-                    response.text
-                )
+                print(f"Failed to send payload. Status code: {response.status_code}, Response: {response.text}")
 
     def run(self):
-        self.logger.info("Job started")
+        """
+        This method to handle class logic by running them in order.
+        """
         self.init_p4()
-        if not self.p4:
-            self.logger.critical("P4 invalid, job aborted")
-            return
-
-        self.generate_log()
-        for dept in self.department:
-            self.generate_report(dept)
-            self.send_requests(dept)
-        self.logger.info("Job finished successfully")
-
+        if self.p4:
+            self.generate_log()
+            for department in self.department:
+                self.generate_report(department=department)
+                self.send_teams(department=department)
+        else:
+            print(f"{self.name} P4 is invalid, job skipped.")
 
 if __name__ == "__main__":
     pass

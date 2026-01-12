@@ -24,4 +24,4 @@ def main(*args):
                 ISN_VFX_2.run()
         time.sleep(60)  # Interval trigger time
 
-main("20:45","23:45","01:45")
+main("20:45","23:45")

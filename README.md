@@ -1,13 +1,10 @@
 Info requirement:
-- A valid P4 credential
+- A valid P4  credential
 - Microsoft Workflows job that post message into Group chat , with channel webhook provided, e.g:
  "https://default2ca815949a7142a0a4870fc9de27d8.34.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/xxxxxxxxxxxx"
 - Deprecated: A Slack channel hook address (Setup with "GameContentNotifyBot" app on slack) e,g: 
  "https://hooks.slack.com/services/xxxxxx/xxxxxxxxx/xxxxxxxxxxxx"
--  Tool preset that has been setup based on root>presets>_template
-
-![img_10.png](img_10.png)
-![img_11.png](img_11.png)
+-  Tool preset that has been setup based on [_template](presets/_template)
 
 
 Future update, striked through mean done:
@@ -54,23 +51,28 @@ root
             .p4trust ( N/A for now )
             config.json
 ```
-
+You can also view [_template](presets/_template) preset for reference:
+[.p4config](presets/_template/.p4config) , [config.json](presets/_template/config.json)
 
 ----
 Slack chatbot setup:
 1. A Slack account within Virtuos Vietnam ( For SPX studio)
 2. Create a new channel with blank template
 
- ![img_1.png](img_1.png) ![img_2.png](img_2.png) ![img_3.png](img_3.png) ![img_4.png](img_4.png) ![img_5.png](img_5.png)
+![1.png](doc/img/1.png)
+![2.png](doc/img/2.png)
+![3.png](doc/img/3.png)
+![4.png](doc/img/4.png)
+![5.png](doc/img/5.png)
 3. Add app into channel
 https://slack.com/oauth/v2/authorize?client_id=697626830967.8011987954565&scope=incoming-webhook&user_scope=
- ![img.png](img.png)
+![6.png](doc/img/6.png)
  
    *If you can’t find any channel it doesn’t mean the channel not existed , studio DG agent has blocked the outgoing rules in behind the scene , so as SPX TA you can setup Slack chatbot via vngate for fast workaround*
 
 
 4. Login website “https://api.slack.com/apps/A080BV1U2GM” and “Add new WebHook to Workspace”
-![img_6.png](img_6.png)
-   If you cannot access this App with no authorization , please contact toan.du  to add you as Collaborators, or you can setup the chatbot app yourself.
-![img_7.png](img_7.png)
+![7.png](doc/img/7.png)
+   If you cannot access this App with no authorization , please contact toan.du  to add you as Collaborators, or you can setup the chatbot app yourself in case of you needs full control over slack app.
+![8.png](doc/img/8.png)
 ---

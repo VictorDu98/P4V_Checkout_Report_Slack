@@ -1,15 +1,9 @@
-Info requirement:
-- A valid P4  credential
-- Microsoft Workflows job that post message into Group chat , with channel webhook provided, e.g:
- "https://default2ca815949a7142a0a4870fc9de27d8.34.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/xxxxxxxxxxxx"
-- Deprecated: A Slack channel hook address (Setup with "GameContentNotifyBot" app on slack) e,g: 
- "https://hooks.slack.com/services/xxxxxx/xxxxxxxxx/xxxxxxxxxxxx"
--  Tool preset that has been setup based on [_template](presets/_template)
+setup based on [_template](presets/_template)
 
 <!-- ROADMAP -->
 ## Roadmap
 
----
+
 - [x] Convert powershell and bat script into python syntax
 - [x] Support multiple-projects with preset system
     - [ ] Support mutli-thread to run job(s) simultaneously
@@ -26,7 +20,6 @@ See the open issues for a full list of proposed features (and known issues).
 
 ## Installation:
 
----
 1. First, cd terminal into your root directory
 
 2. Make new virtual env
@@ -45,10 +38,11 @@ venv\Scripts\activate
 pip install -r requirements.txt  
 ```
 
-## What is a preset
+## What is a preset?
 
----
+
 A preset can be known as an entity that tool will recognize as task, where task's will queue up and run as waterfall orderly.
+
 For current state, we does not have an system that manage task's, but as core we can setup mutiple task's and delegate the tool to run them daily.
 
 
@@ -65,10 +59,17 @@ root
 You can also view [_template](presets/_template) preset for reference:
 [.p4config](presets/_template/.p4config) , [config.json](presets/_template/config.json)
 
-## Workflows (Power Automate) setup
+##  Prerequisites
+- A valid and working P4 credential
+- Microsoft Workflows job that post message into Group chat , with channel webhook provided, e.g:
+ "https://default2ca815949a7142a0a4870fc9de27d8.34.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/xxxxxxxxxxxx"
+-  Tool preset that has been 
 
----
+## (External)  Workflow setup
+
+
 <details>
+
 ![10.png](doc/img/10.png)
 ![9.png](doc/img/9.png)
 ![12.png](doc/img/12.png)
@@ -80,11 +81,12 @@ You can also view [_template](presets/_template) preset for reference:
 ![18.png](doc/img/18.png)
 
 ![11.png](doc/img/11.png)
+
 </details>
 
-## Slack chatbot setup:
+## (External-Deprecreted) Slack chatbot setup:
 
----
+
 <details>
 1. A Slack account within Virtuos Vietnam ( For SPX studio)
 2. Create a new channel with blank template

@@ -1,0 +1,6 @@
+
+        P4PORT= "perforce:1666"
+        P4USER= "p4user"
+        P4CHARSET= "utf8"
+        P4CLIENT="p4client"
+        

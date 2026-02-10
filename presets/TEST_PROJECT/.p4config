@@ -1,6 +1,5 @@
-
-        P4PORT= "perforce:1666"
-        P4USER= "p4user"
-        P4CHARSET= "utf8"
-        P4CLIENT="p4client"
-        
+P4PORT=spxp4d2.virtuosgames.com:1666
+P4USER=toan.du
+P4CLIENT=toan.du_VNSPXW1069_internal
+P4CHARSET=none
+P4IGNORE=.p4ignore.txt

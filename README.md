@@ -1,4 +1,22 @@
-setup based on [_template](presets/_template)
+## About the Project
+<!-- PROJECT LOGO -->
+<br />
+<div align="center">
+  <a href="https://github.com/othneildrew/Best-README-Template">
+    <img src="doc/img/logo.png" alt="Logo" width="250" height="250">
+  </a>
+
+  <h3 align="center">Project-p4-overwatch</h3>
+
+  <p align="center">
+    A solution to remind your team to remember check-in their work!
+    <br />
+    <a href="https://github.com/othneildrew/Best-README-Template/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
+    &middot;
+    <a href="https://github.com/othneildrew/Best-README-Template/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a>
+  </p>
+</div>
+
 
 <!-- ROADMAP -->
 ## Roadmap
@@ -9,15 +27,46 @@ setup based on [_template](presets/_template)
     - [ ] Support mutli-thread to run job(s) simultaneously
 
 - [x] Remove hardcoded P4V password, enabled .p4tickets on preset.
-  - [ ] Generate .p4trust for first time preset login
-- [ ] Develop Frontend and move on from CLI.
-- [ ] Support both Slack and Workflows message posting
-
+  - [ ] Generate .p4trust for preset
+- [ ] Develop Frontend and DB and move on from CLI.
+- [ ] Provide config.json able to adjust trigger time and iterations
 - [ ] Have a test case system for basic validation
-
+- [ ] Support both Slack and Workflows message posting
 
 See the open issues for a full list of proposed features (and known issues).
 
+<!-- WHAT IS A PRESET -->
+## What is a preset?
+
+
+A preset can be known as an entity that tool will recognize as task, where task's will queue up and run as waterfall orderly.
+
+For current state, we does not have an system that manage task's, but as core we can setup mutiple task's and delegate the tool to run them daily via **root>_start.py_**
+
+
+A preset consist following files:
+```
+root
+  - presets
+       - [Preset name]
+            .p4config
+            .p4tickets(Generated via p4 login)
+            .p4trust ( N/A for now )
+            config.json
+```
+You can also view [_template](presets/_template) preset for reference:
+[.p4config](presets/_template/.p4config) , [config.json](presets/_template/config.json)
+
+<!-- PREREQUISITES -->
+##  Prerequisites
+- A valid and working P4 credential
+- Microsoft Workflows job that post message into Group chat, with channel webhook provided
+  - See tutorial of how to <a href="#workflow-setup">Workflow setup</a></li>
+- A valid tool preset that has been setup based on [_template](presets/_template)
+    
+  - See tutorial of how to  <a href="#preset-setup">Preset setup</a></li>
+
+<!-- INSTALLATION -->
 ## Installation:
 
 1. First, cd terminal into your root directory
@@ -38,33 +87,20 @@ venv\Scripts\activate
 pip install -r requirements.txt  
 ```
 
-## What is a preset?
+
+## Example:
 
 
-A preset can be known as an entity that tool will recognize as task, where task's will queue up and run as waterfall orderly.
+<a id="preset-setup"></a>
+## Preset setup
+<details>
 
-For current state, we does not have an system that manage task's, but as core we can setup mutiple task's and delegate the tool to run them daily.
+![19.png](doc/img/19.png)
+![20.png](doc/img/20.png)
+![21.png](doc/img/21.png)
 
 
-A preset consist following files:
-```
-root
-  - presets
-       - [Preset name]
-            .p4config
-            .p4tickets(Generated via p4 login)
-            .p4trust ( N/A for now )
-            config.json
-```
-You can also view [_template](presets/_template) preset for reference:
-[.p4config](presets/_template/.p4config) , [config.json](presets/_template/config.json)
-
-##  Prerequisites
-- A valid and working P4 credential
-- Microsoft Workflows job that post message into Group chat , with channel webhook provided, e.g:
- "https://default2ca815949a7142a0a4870fc9de27d8.34.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/xxxxxxxxxxxx"
--  Tool preset that has been 
-
+<a id="workflow-setup"></a>
 ## (External)  Workflow setup
 
 
@@ -89,9 +125,12 @@ You can also view [_template](presets/_template) preset for reference:
 
 <details>
 1. A Slack account within Virtuos Vietnam ( For SPX studio)
-2. Create a new channel with blank template
 
 ![1.png](doc/img/1.png)
+
+2. Create a new channel with blank template
+
+
 ![2.png](doc/img/2.png)
 ![3.png](doc/img/3.png)
 ![4.png](doc/img/4.png)

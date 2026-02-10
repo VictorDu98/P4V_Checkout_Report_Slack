@@ -1,7 +1,7 @@
 {
     "misc": [
         {
-            "OutputLogAndReport": "\\\\virtuosgames.com\\spx\\TA\\05_Share\\ToanDu\\test",
+            "OutputLogAndReport": "\\\\virtuosgames.com\\spxprojects\\RPT\\09_Share\\toandu",
             "Webhook": "https://default2ca815949a7142a0a4870fc9de27d8.34.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/7aaf012f794f47a4be63ff3e35fa9877/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=1Z6wz62e7Drg3vHGS16NNuWwddp6Z4GqOs_arJzE4WU"
         }
     ],

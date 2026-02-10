@@ -1,4 +1,5 @@
-import model
+from src import model
+
 
 class Model_debug(model.Model):
     def __init__(self, name):
@@ -7,13 +8,13 @@ class Model_debug(model.Model):
 
 
 def main(*args):
-    #GFH = Model_debug("GFH")
-    #GFH.run()
-
-    ISN_ENV_2 = Model_debug("ISN_ENV_2")
-    ISN_ENV_2.run()
-
-    ISN_VFX_2 = Model_debug("ISN_VFX_2")
-    ISN_VFX_2.run()
+    #ISN_ENV_2 = Model_debug("ISN_ENV_2")
+    #ISN_ENV_2.run()
+    #ISN_VFX_2 = Model_debug("ISN_VFX_2")
+    #ISN_VFX_2.run()
+    RPT = Model_debug("RPT")
+    RPT.run()
+    #TEST_PROJECT =Model_debug("TEST_PROJECT")
+    #TEST_PROJECT.run()
 
 main()

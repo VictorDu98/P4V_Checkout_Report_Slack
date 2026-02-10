@@ -1,5 +1,5 @@
 import time
-import model
+from src import model
 
 """
         Make sure to have every class instance .p4tickets generated, so the script is not blocked by waiting user to login.
@@ -14,14 +14,8 @@ def main(*args):
         current_time = time.strftime("%H:%M")
         for arg in args:
             if current_time == arg:
-                GFH = model.Model("GFH")
-                GFH.run()
-
-                ISN_ENV_2 = model.Model("ISN_ENV_2")
-                ISN_ENV_2.run()
-
-                ISN_VFX_2 = model.Model("ISN_VFX_2")
-                ISN_VFX_2.run()
+                RPT = model.Model("RPT")
+                RPT.run()
         time.sleep(60)  # Interval trigger time
 
-main("20:45","23:45")
+main("18:30")

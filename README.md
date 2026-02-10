@@ -9,7 +9,7 @@
   <h3 align="center">Project-p4-overwatch</h3>
 
   <p align="center">
-    A solution to remind your team to remember check-in their work!
+    A solution to remind your team to check-in their work!
     <br />
     <a href="https://github.com/othneildrew/Best-README-Template/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
     &middot;
@@ -54,15 +54,15 @@ root
             .p4trust ( N/A for now )
             config.json
 ```
-You can also view [_template](presets/_template) preset for reference:
-[.p4config](presets/_template/.p4config) , [config.json](presets/_template/config.json)
+You can also view [_template](src/presets/presets/_template) preset for reference:
+[.p4config](src/presets/presets/_template/.p4config) , [config.json](src/presets/presets/_template/config.json)
 
 <!-- PREREQUISITES -->
 ##  Prerequisites
 - A valid and working P4 credential
 - Microsoft Workflows job that post message into Group chat, with channel webhook provided
   - See tutorial of how to <a href="#workflow-setup">Workflow setup</a></li>
-- A valid tool preset that has been setup based on [_template](presets/_template)
+- A valid tool preset that has been setup based on [_template](src/presets/presets/_template)
     
   - See tutorial of how to  <a href="#preset-setup">Preset setup</a></li>
 
@@ -99,6 +99,7 @@ pip install -r requirements.txt
 ![20.png](doc/img/20.png)
 ![21.png](doc/img/21.png)
 
+</details>
 
 <a id="workflow-setup"></a>
 ## (External)  Workflow setup

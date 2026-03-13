@@ -95,7 +95,7 @@ class Model:
         :param string_list: Lines from a log file.
         :return: A set of workspace names that matched.
         """
-        pattern = re.compile(r"^.+ - edit - CL (\d+|default) - ([A-Za-z0-9._]+)")
+        pattern = re.compile(r"^.+ - edit - CL (\d+|default) - ([A-Za-z0-9._-]+)")
         workspaces = []
         for line in string_list:
             match = pattern.match(line.strip())
@@ -338,5 +338,5 @@ class Model:
             print(f"{self.name} P4 is invalid, job skipped.")
 
 if __name__ == "__main__":
-    pass
-    # TODO : Separate p4python elements from main class into separate class
+    ...
+    #TODO : Separate p4python elements from main class into separate class

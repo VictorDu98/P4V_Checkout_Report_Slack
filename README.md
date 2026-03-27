@@ -11,9 +11,9 @@
   <p align="center">
     A solution to remind your team to remember check-in their work!
     <br />
-    <a href="https://github.com/othneildrew/Best-README-Template/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
+    <a href="https://gitlabtools.virtuosgames.com/spx/tools/project-p4-overwatch/-/issues/new?labels=Bug&description_template=bug_report_template">Report Bug</a>
     &middot;
-    <a href="https://github.com/othneildrew/Best-README-Template/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a>
+    <a href="https://gitlabtools.virtuosgames.com/spx/tools/project-p4-overwatch/-/issues/new?labels=Features&description_template=new_features_request_templates">Request Feature</a>
   </p>
 </div>
 

@@ -1,24 +1,23 @@
 {
-     "misc":[
-                {
-                "OutputLogAndReport": "Output address to store logs and report",
-                "Webhook": "Microsoft Teams Workflow incoming webhook"
-                }
-            ],
-            "info":[
-                {
-                  "AccountName": "Artist P4V account name",
-                  "UserName": "User real name - optional and can excluded in config",
-                  "Department": "ENV/VFX/LIGHTING/RIGGING/CHARACTER/...",
-                  "Email": "Artist @virtuosgames.com email , must be @virtuogames.com otherwise Teams Workflow can't tag user on channel",
-                  "WorkSpace": "Artist P4V workspace name"
-                },
-                {
-                  "AccountName": "Artist P4V account name",
-                  "Department": "ENV/VFX/LIGHTING/RIGGING/CHARACTER/...",
-                  "Email": "Artist @virtuosgames email",
-                  "WorkSpace": "Artist P4V workspace name"
-                }
-            ]
-        }
+  "misc":[
+            {
+            "OutputLogAndReport": "Output address to store logs and report",
+            "Webhook": "Microsoft Teams Workflow incoming webhook"
+            }
+        ],
+        "info":[
+            {
+              "AccountName": "Artist P4V account name",
+              "UserName": "User real name - optional and can excluded in config",
+              "Department": "ENV/VFX/LIGHTING/RIGGING/CHARACTER/...",
+              "Email": "Artist @virtuosgames.com email , must be @virtuogames.com otherwise Teams Workflow can't tag user on channel",
+              "WorkSpace": "Artist P4V workspace name"
+            },
+            {
+              "AccountName": "Artist P4V account name",
+              "Department": "ENV/VFX/LIGHTING/RIGGING/CHARACTER/...",
+              "Email": "Artist @virtuosgames email",
+              "WorkSpace": "Artist P4V workspace name"
+            }
+        ]
 }

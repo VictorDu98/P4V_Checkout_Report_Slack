@@ -307,11 +307,10 @@ class ReportGenerator:
                         if user.get("Department") != department:
                             continue
 
-                        # Try to include UserName if available
-                        try:
-                            user_entry = f"<at>{user['Email']}</at> - {user.get('UserName')} - {user['WorkSpace']}"
-                        except KeyError:
+                        if user.get("UserName") is None:
                             user_entry = f"<at>{user['Email']}</at>"
+                        else:
+                            user_entry = f"<at>{user['Email']}</at> - {user.get('UserName')} - {user['WorkSpace']}"
 
                         f.write(user_entry)
 

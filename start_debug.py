@@ -12,8 +12,8 @@ def main(*args):
     #ISN_ENV_2.run()
     #ISN_VFX_2 = Model_debug("ISN_VFX_2")
     #ISN_VFX_2.run()
-    RPT = Model_debug("RPT")
-    RPT.run()
+    TEST_PROJECT = Model_debug("TEST_PROJECT")
+    TEST_PROJECT.run()
     #TEST_PROJECT =Model_debug("TEST_PROJECT")
     #TEST_PROJECT.run()
 

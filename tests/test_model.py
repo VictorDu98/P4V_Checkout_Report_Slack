@@ -333,7 +333,7 @@ class TestReportGenerator(unittest.TestCase):
 
             self.assertTrue(result)
             mock_post.assert_called_once()
-            self.log.info.assert_called_with("Report sent to Teams successfully")
+            self.log.info.assert_called_with("✅ Report sent to Teams successfully")
 
     def test_send_to_teams_failure_with_http_status(self):
         """Test failed Teams message send logs error."""

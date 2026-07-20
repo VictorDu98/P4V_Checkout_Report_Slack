@@ -309,7 +309,7 @@ class ReportGenerator:
 
                         # Try to include UserName if available
                         try:
-                            user_entry = f"<at>{user['Email']}</at> - {user.get('UserName', 'N/A')} - {user['WorkSpace']}"
+                            user_entry = f"<at>{user['Email']}</at> - {user.get('UserName')} - {user['WorkSpace']}"
                         except KeyError:
                             user_entry = f"<at>{user['Email']}</at>"
 
@@ -323,7 +323,7 @@ class ReportGenerator:
                         continue
 
                 # Add log file reference
-                f.write(f"<br><br>Vào đây xem log để biết file nào đang checkout nè:<br>{log_content.split(chr(10))[0]}")
+                f.write(f"<br><br>Vào đây xem log để biết file nào đang checkout nè:<br>{output_path}")
 
             self.log.info(f"Report generated: {output_path}")
             return True

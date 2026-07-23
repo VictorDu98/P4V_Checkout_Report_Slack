@@ -367,6 +367,7 @@ class ReportGenerator:
         self,
         output_path: str,
         log_content: str,
+        log_path:str,
         config_workspaces: List[str],
         config_users: List[Dict[str, Any]],
         department: str,
@@ -401,10 +402,6 @@ class ReportGenerator:
                     try:
                         user = config_users[user_idx]
 
-                        if user.get("Department") != department:
-                            self.log.debug(f"Skipping user {user_idx}: department mismatch")
-                            continue
-
                         if user.get("UserName") is None:
                             user_entry = f"<at>{user['Email']}</at>"
                         else:
@@ -422,7 +419,7 @@ class ReportGenerator:
                         continue
 
                 # Add log file reference
-                f.write(f"<br><br>Vào đây xem log để biết file nào đang checkout nè:<br>{output_path}")
+                f.write(f"<br><br>Vào đây xem log để biết file nào đang checkout nè:<br>{log_path}")
 
             self.log.info(f"Report generated successfully: {output_path} ({users_written} user(s))")
             return True
@@ -648,12 +645,13 @@ class Model:
                 # Generate report
                 self.log.debug(f"Generating report for {department}")
                 if self.report_gen.generate(
-                    report_path,
-                    log_content,
-                    self.workspaces,
-                    self.config.config.get("info", []),
-                    department,
-                    self.get_time()
+                    output_path= report_path,
+                    log_content= log_content,
+                    log_path= self.output_log,
+                    config_workspaces = self.workspaces,
+                    config_users =self.config.config.get("info", []),
+                    department= department,
+                    timestamp =self.get_time()
                 ):
                     reports_generated += 1
                     self.log.debug(f"Report generated, sending to Teams")

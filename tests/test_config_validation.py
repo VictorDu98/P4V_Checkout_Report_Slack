@@ -1,7 +1,7 @@
 import unittest
 import os
 import sys
-import json
+import csv
 from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -10,7 +10,7 @@ from src.model import PresetConfig
 
 
 class TestConfigFilesValidation(unittest.TestCase):
-    """Scan and validate all config.json files in src/presets/"""
+    """Scan and validate all config.csv files in src/presets/"""
 
     PRESETS_DIR = os.path.join(os.path.dirname(__file__), '..', 'src', 'presets')
 
@@ -28,7 +28,7 @@ class TestConfigFilesValidation(unittest.TestCase):
         return sorted(presets)
 
     def test_all_config_files_exist(self):
-        """Test that all presets have config.json files."""
+        """Test that all presets have config.csv files."""
         presets = self.get_all_presets()
 
         if not presets:
@@ -36,15 +36,15 @@ class TestConfigFilesValidation(unittest.TestCase):
 
         missing_configs = []
         for preset_name, preset_path in presets:
-            config_path = os.path.join(preset_path, "config.json")
+            config_path = os.path.join(preset_path, "config.csv")
             if not os.path.exists(config_path):
                 missing_configs.append(preset_name)
 
         if missing_configs:
-            self.fail(f"The following presets are missing config.json: {missing_configs}")
+            self.fail(f"The following presets are missing config.csv: {missing_configs}")
 
-    def test_all_config_files_valid_json(self):
-        """Test that all config.json files have valid JSON syntax."""
+    def test_all_config_files_valid_csv(self):
+        """Test that all config.csv files have valid CSV syntax."""
         presets = self.get_all_presets()
 
         if not presets:
@@ -52,26 +52,26 @@ class TestConfigFilesValidation(unittest.TestCase):
 
         invalid_configs = {}
         for preset_name, preset_path in presets:
-            config_path = os.path.join(preset_path, "config.json")
+            config_path = os.path.join(preset_path, "config.csv")
             if not os.path.exists(config_path):
                 continue
 
             try:
                 with open(config_path, 'r', encoding='utf-8') as f:
-                    json.load(f)
-            except json.JSONDecodeError as e:
+                    reader = csv.reader(f)
+                    for _ in reader:
+                        pass  # Just read through to verify CSV is valid
+            except Exception as e:
                 invalid_configs[preset_name] = str(e)
-            except IOError as e:
-                invalid_configs[preset_name] = f"Read error: {e}"
 
         if invalid_configs:
-            error_msg = "The following configs have invalid JSON:\n"
+            error_msg = "The following configs have invalid CSV:\n"
             for preset, error in invalid_configs.items():
                 error_msg += f"  - {preset}: {error}\n"
             self.fail(error_msg)
 
     def test_all_config_files_have_required_fields(self):
-        """Test that all config.json files have required fields."""
+        """Test that all config.csv files have required fields."""
         presets = self.get_all_presets()
 
         if not presets:
@@ -79,7 +79,7 @@ class TestConfigFilesValidation(unittest.TestCase):
 
         errors = {}
         for preset_name, preset_path in presets:
-            config_path = os.path.join(preset_path, "config.json")
+            config_path = os.path.join(preset_path, "config.csv")
             if not os.path.exists(config_path):
                 continue
 
@@ -112,12 +112,17 @@ class TestConfigFilesValidation(unittest.TestCase):
                 try:
                     workspaces = preset_config.get_workspaces()
                 except (KeyError, TypeError) as e:
-                    preset_errors.append(f"Missing 'WorkSpace' field in info entries: {e}")
+                    preset_errors.append(f"Missing 'WorkspaceName' field in info entries: {e}")
 
                 try:
-                    departments = preset_config.get_departments()
+                    department = preset_config.get_department()
                 except (KeyError, TypeError) as e:
-                    preset_errors.append(f"Missing 'Department' field in info entries: {e}")
+                    preset_errors.append(f"Missing 'Department' in misc section: {e}")
+
+                try:
+                    schedule_time = preset_config.get_schedule_time()
+                except (KeyError, TypeError) as e:
+                    preset_errors.append(f"Missing 'Schedule Time' in misc section: {e}")
 
                 if preset_errors:
                     errors[preset_name] = preset_errors
@@ -243,37 +248,39 @@ class TestConfigFilesValidation(unittest.TestCase):
         presets = self.get_all_presets()
 
         if not presets:
-            print("\n⚠️  No presets found in src/presets/")
+            print("\nNo presets found in src/presets/")
             return
 
-        print(f"\n📋 Found {len(presets)} preset(s):")
+        print(f"\nFound {len(presets)} preset(s):")
         print("=" * 70)
 
         for preset_name, preset_path in presets:
             config_path = os.path.join(preset_path, "config.json")
 
             if not os.path.exists(config_path):
-                print(f"\n❌ {preset_name}")
-                print("   └─ Missing: config.json")
+                print(f"\nError: {preset_name}")
+                print("   - Missing: config.csv")
                 continue
 
             try:
                 preset_config = PresetConfig(preset_path)
                 preset_config.load()
 
-                print(f"\n✅ {preset_name}")
-                print(f"   ├─ Output: {preset_config.get_output_root()}")
-                print(f"   ├─ Webhook: {preset_config.get_webhook()[:50]}...")
+                print(f"\n{preset_name}")
+                print(f"   - Output: {preset_config.get_output_root()}")
+                print(f"   - Webhook: {preset_config.get_webhook()[:50]}...")
 
                 accounts = preset_config.get_accounts()
-                print(f"   ├─ Accounts: {len(accounts)} ({', '.join(accounts[:3])}{'...' if len(accounts) > 3 else ''})")
+                print(f"   - Accounts: {len(accounts)} ({', '.join(accounts[:3])}{'...' if len(accounts) > 3 else ''})")
 
-                departments = preset_config.get_departments()
-                print(f"   └─ Departments: {', '.join(departments)}")
+                department = preset_config.get_department()
+                schedule_time = preset_config.get_schedule_time()
+                print(f"   - Department: {department}")
+                print(f"   - Schedule Time: {schedule_time}")
 
             except Exception as e:
-                print(f"\n❌ {preset_name}")
-                print(f"   └─ Error: {e}")
+                print(f"\nError: {preset_name}")
+                print(f"   - Error: {e}")
 
         print("\n" + "=" * 70)
 

@@ -80,7 +80,7 @@ class PresetListModel:
         for item in os.listdir(self.presets_dir):
             item_path = os.path.join(self.presets_dir, item)
             if os.path.isdir(item_path):
-                config_path = os.path.join(item_path, "config.json")
+                config_path = os.path.join(item_path, "config.csv")
                 if os.path.exists(config_path):
                     try:
                         preset_config = PresetConfig(item_path)
@@ -223,7 +223,7 @@ class PresetManagerWidget(QWidget):
         preset = self.model.get_preset(preset_name)
 
         if preset:
-            config_path = os.path.join(preset["path"], "config.json")
+            config_path = os.path.join(preset["path"], "config.csv")
             os.startfile(config_path)  # Windows
             # For Linux: subprocess.Popen(['gedit', config_path])
 

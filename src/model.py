@@ -2,7 +2,7 @@ import os
 import sys
 import shutil
 import requests
-import json
+import csv
 import re
 import random
 import time
@@ -14,6 +14,8 @@ from pathlib import Path
 from http import HTTPStatus
 from P4 import P4, P4Exception
 from src.logger import setup_logger
+from src.preset_validator import PresetValidator
+
 
 ROOT_DIR: str = os.path.dirname(os.path.realpath(__file__))
 PRESET_DIR: str = os.path.join(ROOT_DIR, "presets")
@@ -26,14 +28,14 @@ class PresetConfig:
 
     def __init__(self, preset_root: str, log: Optional[logging.Logger] = None) -> None:
         self.preset_root = preset_root
-        self.config_path = os.path.join(preset_root, "config.json")
+        self.config_path = os.path.join(preset_root, "config.csv")
         self.p4config_path = os.path.join(preset_root, ".p4config")
         self.config: Dict[str, Any] = {}
         self.log = log or logging.getLogger(__name__)
         self.log.debug(f"PresetConfig initialized for: {preset_root}")
 
     def load(self) -> None:
-        """Load configuration from config.json."""
+        """Load configuration from config.csv."""
         self.log.debug(f"Loading config from: {self.config_path}")
 
         if not os.path.exists(self.config_path):
@@ -41,37 +43,107 @@ class PresetConfig:
             raise FileNotFoundError(f"Config file not found: {self.config_path}")
 
         try:
-            with open(self.config_path, "r", encoding="utf-8") as f:
-                self.config = json.load(f)
-            self.log.info(f"Config loaded successfully with {len(self.config.get('info', []))} user(s)")
-        except json.JSONDecodeError as e:
-            self.log.error(f"Invalid JSON in {self.config_path}: {e}")
-            raise ValueError(f"Invalid JSON in {self.config_path}: {e}")
-        except IOError as e:
+            self.config = self._parse_csv()
+
+            # Validate required fields
+            try:
+                self.get_output_root()
+                self.get_webhook()
+            except KeyError as e:
+                self.log.error(f"Missing required field in config: {e}")
+                raise
+
+            user_count = len(self.config.get('info', []))
+            self.log.info(f"Config loaded successfully with {user_count} user(s)")
+        except KeyError:
+            raise
+        except Exception as e:
             self.log.error(f"Failed to read {self.config_path}: {e}")
             raise IOError(f"Failed to read {self.config_path}: {e}")
+
+    def _parse_csv(self) -> Dict[str, Any]:
+        """Parse CSV file into config dictionary."""
+        config = {"misc": [], "info": []}
+
+        with open(self.config_path, "r", encoding="utf-8") as f:
+            reader = csv.reader(f)
+            rows = list(reader)
+
+        current_section = None
+        headers = None
+
+        for row in rows:
+            # Skip empty rows
+            if not row or not row[0].strip():
+                continue
+
+            first_col = row[0].strip()
+
+            # Check for section headers
+            if first_col == "Miscellaneous":
+                current_section = "misc"
+                headers = None
+                continue
+
+            if first_col == "User info":
+                current_section = "info"
+                headers = None
+                continue
+
+            # For info section, first non-empty row after header is column names
+            if current_section == "info" and headers is None:
+                headers = [col.strip() for col in row if col.strip()]
+                continue
+
+            # Parse data rows
+            if current_section == "misc" and len(row) >= 2:
+                # Misc section: key in first column, value in second
+                key = first_col
+                value = row[1].strip() if len(row) > 1 else ""
+                if key and value:  # Only add non-empty entries
+                    config["misc"].append({key: value})
+
+            elif current_section == "info" and headers:
+                # Info section: use headers as keys
+                user_data = {}
+                for idx, header in enumerate(headers):
+                    value = row[idx].strip() if idx < len(row) else ""
+                    if value:  # Only add non-empty values
+                        user_data[header] = value
+
+                if user_data.get("AccountName"):  # Only add if AccountName exists
+                    config["info"].append(user_data)
+
+        return config
+
+    def _get_misc_value(self, key: str) -> str:
+        """Get value from misc section by key."""
+        for entry in self.config.get("misc", []):
+            if key in entry:
+                return entry[key]
+        raise KeyError(f"Missing '{key}' in misc section")
 
     def get_output_root(self) -> str:
         """Get output directory from config."""
         self.log.debug("Retrieving output root directory")
         try:
-            output_root = self.config["misc"][0]["OutputLogAndReport"]
+            output_root = self._get_misc_value("OutputLogAndReport")
             self.log.debug(f"Output root: {output_root}")
             return output_root
-        except (KeyError, IndexError) as e:
-            self.log.error(f"Missing 'misc.OutputLogAndReport' in config: {e}")
-            raise KeyError(f"Missing 'misc.OutputLogAndReport' in config: {e}")
+        except KeyError as e:
+            self.log.error(f"{e}")
+            raise KeyError(f"Missing 'OutputLogAndReport' in config: {e}")
 
     def get_webhook(self) -> str:
         """Get webhook URL from config."""
         self.log.debug("Retrieving webhook URL")
         try:
-            webhook = self.config["misc"][0]["Webhook"]
+            webhook = self._get_misc_value("Webhook")
             self.log.debug("Webhook retrieved successfully")
             return webhook
-        except (KeyError, IndexError) as e:
-            self.log.error(f"Missing 'misc.Webhook' in config: {e}")
-            raise KeyError(f"Missing 'misc.Webhook' in config: {e}")
+        except KeyError as e:
+            self.log.error(f"{e}")
+            raise KeyError(f"Missing 'Webhook' in config: {e}")
 
     def get_accounts(self) -> List[str]:
         """Get list of P4 account names."""
@@ -79,11 +151,12 @@ class PresetConfig:
         accounts = []
         try:
             for entry in self.config.get("info", []):
-                accounts.append(entry["AccountName"])
+                if "AccountName" in entry:
+                    accounts.append(entry["AccountName"])
             self.log.debug(f"Found {len(accounts)} account(s): {accounts}")
-        except KeyError as e:
-            self.log.error(f"Missing 'AccountName' in config entry: {e}")
-            raise KeyError(f"Missing 'AccountName' in config entry: {e}")
+        except Exception as e:
+            self.log.error(f"Error retrieving account names: {e}")
+            raise KeyError(f"Error retrieving account names: {e}")
         return accounts
 
     def get_workspaces(self) -> List[str]:
@@ -92,27 +165,35 @@ class PresetConfig:
         workspaces = []
         try:
             for entry in self.config.get("info", []):
-                workspaces.append(entry["WorkSpace"])
+                if "WorkspaceName" in entry:
+                    workspaces.append(entry["WorkspaceName"])
             self.log.debug(f"Found {len(workspaces)} workspace(s)")
-        except KeyError as e:
-            self.log.error(f"Missing 'WorkSpace' in config entry: {e}")
-            raise KeyError(f"Missing 'WorkSpace' in config entry: {e}")
+        except Exception as e:
+            self.log.error(f"Error retrieving workspace names: {e}")
+            raise KeyError(f"Error retrieving workspace names: {e}")
         return workspaces
 
-    def get_departments(self) -> List[str]:
-        """Get unique departments from config."""
-        self.log.debug("Retrieving departments")
-        departments = []
+    def get_department(self) -> str:
+        """Get department from config (misc section)."""
+        self.log.debug("Retrieving department")
         try:
-            for entry in self.config.get("info", []):
-                dept = entry["Department"]
-                if dept not in departments:
-                    departments.append(dept)
-            self.log.debug(f"Found {len(departments)} department(s): {departments}")
+            department = self._get_misc_value("Department")
+            self.log.debug(f"Department: {department}")
+            return department
         except KeyError as e:
-            self.log.error(f"Missing 'Department' in config entry: {e}")
-            raise KeyError(f"Missing 'Department' in config entry: {e}")
-        return departments
+            self.log.error(f"{e}")
+            raise KeyError(f"Missing 'Department' in misc section: {e}")
+
+    def get_schedule_time(self) -> str:
+        """Get schedule time from config (misc section)."""
+        self.log.debug("Retrieving schedule time")
+        try:
+            schedule_time = self._get_misc_value("Schedule Time")
+            self.log.debug(f"Schedule time: {schedule_time}")
+            return schedule_time
+        except KeyError as e:
+            self.log.error(f"{e}")
+            raise KeyError(f"Missing 'Schedule Time' in misc section: {e}")
 
     def get_user_by_index(self, index: int) -> Dict[str, Any]:
         """Get user info by index."""
@@ -129,34 +210,24 @@ class PresetConfig:
         """Create template configuration files."""
         self.log.info(f"Creating template files in: {self.preset_root}")
 
-        dic = {
-            "misc": [
-                {
-                    "OutputLogAndReport": "Output address to store logs and report",
-                    "Webhook": "Microsoft Teams Workflow incoming webhook"
-                }
-            ],
-            "info": [
-                {
-                    "AccountName": "Artist P4V account name",
-                    "UserName": "User real name - optional and can excluded in config",
-                    "Department": "ENV/VFX/LIGHTING/RIGGING/CHARACTER/...",
-                    "Email": "Artist @virtuosgames.com email , must be @virtuogames.com otherwise Teams Workflow can't tag user on channel",
-                    "WorkSpace": "Artist P4V workspace name"
-                },
-                {
-                    "AccountName": "Artist P4V account name",
-                    "Department": "ENV/VFX/LIGHTING/RIGGING/CHARACTER/...",
-                    "Email": "Artist @virtuosgames email",
-                    "WorkSpace": "Artist P4V workspace name"
-                }
-            ]
-        }
+        csv_content = [
+            ["Miscellaneous", "", "", ""],
+            ["OutputLogAndReport", "Output address to store logs and report", "", ""],
+            ["Webhook", "Microsoft Teams Workflow incoming webhook", "", ""],
+            ["Schedule Time", "18:30", "", ""],
+            ["Department", "ENV", "", ""],
+            ["", "", "", ""],
+            ["User info", "", "", ""],
+            ["AccountName", "UserName(Optional)", "Hostname(Optional)", "WorkspaceName", "Email"],
+            ["Artist P4 account name", "User real name - optional and can excluded in config", "Workstation name", "Artist P4V workspace name", "Artist @virtuosgames.com"],
+            ["Artist P4 account name", "", "", "Artist P4V workspace name", ""]
+        ]
 
         try:
             self.log.debug(f"Writing config template to: {self.config_path}")
-            with open(self.config_path, 'w', encoding='utf-8') as f:
-                json.dump(dic, f, indent=4)
+            with open(self.config_path, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerows(csv_content)
             self.log.info(f"Config template created: {self.config_path}")
         except IOError as e:
             self.log.error(f"Failed to write {self.config_path}: {e}")
@@ -405,7 +476,7 @@ class ReportGenerator:
                         if user.get("UserName") is None:
                             user_entry = f"<at>{user['Email']}</at>"
                         else:
-                            user_entry = f"<at>{user['Email']}</at> - {user.get('UserName')} - {user['WorkSpace']}"
+                            user_entry = f"<at>{user['Email']}</at> - {user.get('UserName')} - {user.get('WorkspaceName')}"
 
                         f.write(user_entry)
                         users_written += 1
@@ -508,7 +579,8 @@ class Model:
             self.webhook = self.config.get_webhook()
             self.accounts = self.config.get_accounts()
             self.workspaces = self.config.get_workspaces()
-            self.departments = self.config.get_departments()
+            self.department = self.config.get_department()
+            self.schedule_time = self.config.get_schedule_time()
         except KeyError as e:
             raise RuntimeError(f"Invalid configuration: {e}")
 
@@ -612,12 +684,12 @@ class Model:
             return False
 
     def generate_reports(self) -> bool:
-        """Generate and send reports for all departments. Returns True if all succeeded."""
-        self.log.info(f"Generating reports for {len(self.departments)} department(s)")
+        """Generate and send report for the configured department. Returns True if successful."""
+        self.log.info(f"Generating report for department: {self.department}")
 
         try:
             if not os.path.exists(self.output_log):
-                self.log.warning("Log file not found, skipping reports")
+                self.log.warning("Log file not found, skipping report")
                 return False
 
             self.log.debug(f"Reading log file: {self.output_log}")
@@ -625,62 +697,72 @@ class Model:
                 log_content = f.read()
             self.log.debug(f"Log file size: {len(log_content)} bytes")
 
-            success = True
-            reports_generated = 0
-            reports_sent = 0
+            report_path = os.path.join(
+                self.output_root,
+                f"report_{self.department}_{self.get_date()}.txt"
+            )
 
-            for department in self.departments:
-                self.log.info(f"Processing department: {department}")
+            # Remove old report if exists
+            if os.path.exists(report_path):
+                self.log.info(f"Removing old report: {report_path}")
+                os.remove(report_path)
 
-                report_path = os.path.join(
-                    self.output_root,
-                    f"report_{department}_{self.get_date()}.txt"
-                )
+            # Generate report
+            self.log.debug(f"Generating report for {self.department}")
+            if self.report_gen.generate(
+                output_path=report_path,
+                log_content=log_content,
+                log_path=self.output_log,
+                config_workspaces=self.workspaces,
+                config_users=self.config.config.get("info", []),
+                department=self.department,
+                timestamp=self.get_time()
+            ):
+                self.log.debug(f"Report generated, sending to Teams")
 
-                # Remove old report if exists
-                if os.path.exists(report_path):
-                    self.log.info(f"Removing old report: {report_path}")
-                    os.remove(report_path)
-
-                # Generate report
-                self.log.debug(f"Generating report for {department}")
-                if self.report_gen.generate(
-                    output_path= report_path,
-                    log_content= log_content,
-                    log_path= self.output_log,
-                    config_workspaces = self.workspaces,
-                    config_users =self.config.config.get("info", []),
-                    department= department,
-                    timestamp =self.get_time()
-                ):
-                    reports_generated += 1
-                    self.log.debug(f"Report generated, sending to Teams")
-
-                    # Send to Teams
-                    if self.report_gen.send_to_teams(report_path, self.webhook):
-                        reports_sent += 1
-                    else:
-                        self.log.warning(f"Failed to send report for {department}")
-                        success = False
+                # Send to Teams
+                if self.report_gen.send_to_teams(report_path, self.webhook):
+                    self.log.info(f"✅ Report generated and sent for {self.department}")
+                    return True
                 else:
-                    self.log.warning(f"Failed to generate report for {department}")
-                    success = False
-
-            self.log.info(f"Report generation complete: {reports_generated}/{len(self.departments)} generated, {reports_sent}/{reports_generated} sent")
-            return success
+                    self.log.warning(f"Failed to send report for {self.department}")
+                    return False
+            else:
+                self.log.warning(f"Failed to generate report for {self.department}")
+                return False
 
         except Exception as e:
             self.log.error(f"Unexpected error generating reports: {e}", exc_info=True)
             return False
+
+    def validate_config(self) -> bool:
+        """Validate preset configuration using PresetValidator. Returns True if valid."""
+
+        self.log.info(f"\n📋 Validating configuration...")
+
+        validator = PresetValidator(self.log)
+        is_valid, errors = validator.validate_preset(self.name, self.preset_root)
+
+        if not is_valid:
+            self.log.error(f"❌ Configuration validation failed:")
+            for error in errors:
+                self.log.error(f"   - {error}")
+            return False
+
+        self.log.info(f"✅ Configuration validation passed")
+        return True
 
     def run(self) -> bool:
         """Execute the full workflow. Returns True if successful."""
         self.log.info(f"=" * 70)
         self.log.info(f"🚀 Starting job for preset: {self.name}")
         self.log.info(f"=" * 70)
-        self.log.info(f"Accounts: {', '.join(self.accounts)}")
-        self.log.info(f"Departments: {', '.join(self.departments)}")
-        self.log.info(f"Timestamp: {self.get_time()}")
+
+        # Step 0: Validate configuration
+        self.log.info(f"\n📋 Step 0: Validating configuration...")
+        if not self.validate_config():
+            self.log.warning("❌ Configuration validation failed, job skipped")
+            return False
 
         try:
             # Initialize P4
@@ -715,17 +797,49 @@ class Model:
             self.p4_manager.disconnect()
 
 
+    def start_schedule(self) -> None:
+        """
+        Start scheduler to run preset at configured schedule time.
+
+        The schedule time is read from the config (Schedule Time in Miscellaneous section).
+        Format: "HH:MM" (24-hour format), e.g., "18:30"
+        """
+        self.log.info(f"Starting scheduler for preset '{self.name}' at {self.schedule_time}")
+
+        while True:
+            try:
+                current_time = time.strftime("%H:%M")
+
+                if current_time == self.schedule_time:
+                    self.log.info(f"⏰ Trigger time '{self.schedule_time}' reached, starting job")
+                    try:
+                        self.run()
+                    except Exception as e:
+                        self.log.error(f"❌ Job failed: {e}", exc_info=True)
+
+                time.sleep(60)  # Check every 60 seconds
+
+            except KeyboardInterrupt:
+                self.log.info("Scheduler stopped by user (KeyboardInterrupt)")
+                break
+            except Exception as e:
+                self.log.error(f"Unexpected error in scheduler: {e}", exc_info=True)
+                time.sleep(60)
+
     @staticmethod
     def schedule(preset_name: str, *trigger_times: str) -> None:
         """
-        Run preset on a schedule at specified times.
+        [Deprecated] Run preset on a schedule at specified times.
+
+        Use start_schedule() instance method instead, which reads schedule time from config.
 
         Args:
             preset_name: Name of the preset to run
             *trigger_times: Times to trigger (format: "HH:MM"), e.g., schedule("RPT", "09:00", "18:30")
 
         Example:
-            Model.schedule("RPT", "18:30")  # Runs daily at 6:30 PM
+            model = Model("RPT")
+            model.start_schedule()  # Runs daily at time specified in config
         """
         logger = logging.getLogger(__name__)
         logger.info(f"Starting scheduler for preset '{preset_name}' at times: {', '.join(trigger_times)}")

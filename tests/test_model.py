@@ -2,6 +2,7 @@ import unittest
 import os
 import sys
 import json
+import csv
 import tempfile
 import shutil
 from unittest.mock import Mock, patch, mock_open, MagicMock, call
@@ -107,16 +108,22 @@ class TestPresetConfig(unittest.TestCase):
         shutil.rmtree(self.test_dir, ignore_errors=True)
 
     def test_load_valid_config(self):
-        """Test loading valid config.json."""
-        config = {
-            "misc": [{"OutputLogAndReport": self.test_dir, "Webhook": "https://example.com"}],
-            "info": [
-                {"AccountName": "alice", "Department": "VFX", "Email": "alice@test.com", "WorkSpace": "alice_ws"}
-            ]
-        }
-        config_path = os.path.join(self.preset_path, "config.json")
-        with open(config_path, 'w') as f:
-            json.dump(config, f)
+        """Test loading valid config.csv."""
+        csv_data = [
+            ["Miscellaneous", "", "", ""],
+            ["OutputLogAndReport", self.test_dir, "", ""],
+            ["Webhook", "https://example.com", "", ""],
+            ["Schedule Time", "18:30", "", ""],
+            ["Department", "VFX", "", ""],
+            ["", "", "", ""],
+            ["User info", "", "", ""],
+            ["AccountName", "UserName(Optional)", "Hostname(Optional)", "WorkspaceName", "Email"],
+            ["alice", "", "", "alice_ws", "alice@test.com"]
+        ]
+        config_path = os.path.join(self.preset_path, "config.csv")
+        with open(config_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerows(csv_data)
 
         preset = PresetConfig(self.preset_path)
         preset.load()
@@ -125,7 +132,8 @@ class TestPresetConfig(unittest.TestCase):
         self.assertEqual(preset.get_webhook(), "https://example.com")
         self.assertEqual(preset.get_accounts(), ["alice"])
         self.assertEqual(preset.get_workspaces(), ["alice_ws"])
-        self.assertEqual(preset.get_departments(), ["VFX"])
+        self.assertEqual(preset.get_schedule_time(), "18:30")
+        self.assertEqual(preset.get_department(), "VFX")
 
     def test_load_missing_config(self):
         """Test loading missing config raises error."""
@@ -133,28 +141,32 @@ class TestPresetConfig(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             preset.load()
 
-    def test_load_invalid_json(self):
-        """Test loading invalid JSON raises error."""
-        config_path = os.path.join(self.preset_path, "config.json")
-        with open(config_path, 'w') as f:
-            f.write("{invalid json}")
+    def test_load_invalid_csv(self):
+        """Test loading invalid CSV (missing required values) raises error."""
+        config_path = os.path.join(self.preset_path, "config.csv")
+        with open(config_path, 'w', newline='', encoding='utf-8') as f:
+            f.write("Miscellaneous\n")
 
         preset = PresetConfig(self.preset_path)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(KeyError):
             preset.load()
 
     def test_get_user_by_index(self):
         """Test getting user by index."""
-        config = {
-            "misc": [{"OutputLogAndReport": self.test_dir, "Webhook": "https://example.com"}],
-            "info": [
-                {"AccountName": "alice", "Department": "VFX", "Email": "alice@test.com", "WorkSpace": "alice_ws"},
-                {"AccountName": "bob", "Department": "ENV", "Email": "bob@test.com", "WorkSpace": "bob_ws"}
-            ]
-        }
-        config_path = os.path.join(self.preset_path, "config.json")
-        with open(config_path, 'w') as f:
-            json.dump(config, f)
+        csv_data = [
+            ["Miscellaneous", "", "", ""],
+            ["OutputLogAndReport", self.test_dir, "", ""],
+            ["Webhook", "https://example.com", "", ""],
+            ["", "", "", ""],
+            ["User info", "", "", ""],
+            ["AccountName", "UserName(Optional)", "Hostname(Optional)", "WorkspaceName", "Email"],
+            ["alice", "", "", "alice_ws", "alice@test.com"],
+            ["bob", "", "", "bob_ws", "bob@test.com"]
+        ]
+        config_path = os.path.join(self.preset_path, "config.csv")
+        with open(config_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerows(csv_data)
 
         preset = PresetConfig(self.preset_path)
         preset.load()
@@ -167,7 +179,7 @@ class TestPresetConfig(unittest.TestCase):
         preset = PresetConfig(self.preset_path)
         preset.create_template()
 
-        self.assertTrue(os.path.exists(os.path.join(self.preset_path, "config.json")))
+        self.assertTrue(os.path.exists(os.path.join(self.preset_path, "config.csv")))
         self.assertTrue(os.path.exists(os.path.join(self.preset_path, ".p4config")))
 
         preset.load()
@@ -276,18 +288,19 @@ class TestReportGenerator(unittest.TestCase):
 """
         config_workspaces = ["alice_workspace", "bob_ws"]
         config_users = [
-            {"AccountName": "alice", "Department": "VFX", "Email": "alice@test.com", "WorkSpace": "alice_workspace", "UserName": "Alice"},
-            {"AccountName": "bob", "Department": "ENV", "Email": "bob@test.com", "WorkSpace": "bob_ws"}
+            {"AccountName": "alice", "Department": "VFX", "Email": "alice@test.com", "WorkspaceName": "alice_workspace", "UserName": "Alice"},
+            {"AccountName": "bob", "Department": "ENV", "Email": "bob@test.com", "WorkspaceName": "bob_ws"}
         ]
 
         report_path = os.path.join(self.test_dir, "report.txt")
         result = self.gen.generate(
-            report_path,
-            log_content,
-            config_workspaces,
-            config_users,
-            "VFX",
-            "02:30 PM"
+            output_path=report_path,
+            log_content=log_content,
+            log_path="fake_log_path.txt",
+            config_workspaces=config_workspaces,
+            config_users=config_users,
+            department="VFX",
+            timestamp="02:30 PM"
         )
 
         self.assertTrue(result)
@@ -308,12 +321,13 @@ class TestReportGenerator(unittest.TestCase):
 
         report_path = os.path.join(self.test_dir, "report.txt")
         result = self.gen.generate(
-            report_path,
-            log_content,
-            config_workspaces,
-            config_users,
-            "VFX",
-            "02:30 PM"
+            output_path=report_path,
+            log_content=log_content,
+            config_workspaces=config_workspaces,
+            log_path="fake_log_path.txt",
+            config_users=config_users,
+            department="VFX",
+            timestamp="02:30 PM"
         )
 
         self.assertFalse(result)
@@ -397,15 +411,21 @@ class TestModel(unittest.TestCase):
     def test_model_init_loads_config(self):
         """Test Model initialization loads config."""
         os.makedirs(self.preset_path)
-        config = {
-            "misc": [{"OutputLogAndReport": self.test_dir, "Webhook": "https://example.com"}],
-            "info": [
-                {"AccountName": "alice", "Department": "VFX", "Email": "alice@test.com", "WorkSpace": "alice_ws"}
-            ]
-        }
-        config_path = os.path.join(self.preset_path, "config.json")
-        with open(config_path, 'w') as f:
-            json.dump(config, f)
+        csv_data = [
+            ["Miscellaneous", "", "", ""],
+            ["OutputLogAndReport", self.test_dir, "", ""],
+            ["Webhook", "https://example.com", "", ""],
+            ["Schedule Time", "18:30", "", ""],
+            ["Department", "VFX", "", ""],
+            ["", "", "", ""],
+            ["User info", "", "", ""],
+            ["AccountName", "UserName(Optional)", "Hostname(Optional)", "WorkspaceName", "Email"],
+            ["alice", "", "", "alice_ws", "alice@test.com"]
+        ]
+        config_path = os.path.join(self.preset_path, "config.csv")
+        with open(config_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerows(csv_data)
 
         with patch('src.model.PRESET_DIR', os.path.join(self.test_dir, "presets")):
             with patch('src.model.setup_logger'):
@@ -418,13 +438,21 @@ class TestModel(unittest.TestCase):
     def test_model_generate_log(self):
         """Test log generation."""
         os.makedirs(self.preset_path)
-        config = {
-            "misc": [{"OutputLogAndReport": self.test_dir, "Webhook": "https://example.com"}],
-            "info": [{"AccountName": "alice", "Department": "VFX", "Email": "alice@test.com", "WorkSpace": "alice_ws"}]
-        }
-        config_path = os.path.join(self.preset_path, "config.json")
-        with open(config_path, 'w') as f:
-            json.dump(config, f)
+        csv_data = [
+            ["Miscellaneous", "", "", ""],
+            ["OutputLogAndReport", self.test_dir, "", ""],
+            ["Webhook", "https://example.com", "", ""],
+            ["Schedule Time", "18:30", "", ""],
+            ["Department", "VFX", "", ""],
+            ["", "", "", ""],
+            ["User info", "", "", ""],
+            ["AccountName", "UserName(Optional)", "Hostname(Optional)", "WorkspaceName", "Email"],
+            ["alice", "", "", "alice_ws", "alice@test.com"]
+        ]
+        config_path = os.path.join(self.preset_path, "config.csv")
+        with open(config_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerows(csv_data)
 
         with patch('src.model.PRESET_DIR', os.path.join(self.test_dir, "presets")):
             with patch('src.model.setup_logger'):
@@ -448,13 +476,21 @@ class TestModel(unittest.TestCase):
     def test_model_generate_log_atomic_write(self):
         """Test log generation uses atomic writes (no temp file left on success)."""
         os.makedirs(self.preset_path)
-        config = {
-            "misc": [{"OutputLogAndReport": self.test_dir, "Webhook": "https://example.com"}],
-            "info": [{"AccountName": "alice", "Department": "VFX", "Email": "alice@test.com", "WorkSpace": "alice_ws"}]
-        }
-        config_path = os.path.join(self.preset_path, "config.json")
-        with open(config_path, 'w') as f:
-            json.dump(config, f)
+        csv_data = [
+            ["Miscellaneous", "", "", ""],
+            ["OutputLogAndReport", self.test_dir, "", ""],
+            ["Webhook", "https://example.com", "", ""],
+            ["Schedule Time", "18:30", "", ""],
+            ["Department", "VFX", "", ""],
+            ["", "", "", ""],
+            ["User info", "", "", ""],
+            ["AccountName", "UserName(Optional)", "Hostname(Optional)", "WorkspaceName", "Email"],
+            ["alice", "", "", "alice_ws", "alice@test.com"]
+        ]
+        config_path = os.path.join(self.preset_path, "config.csv")
+        with open(config_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerows(csv_data)
 
         with patch('src.model.PRESET_DIR', os.path.join(self.test_dir, "presets")):
             with patch('src.model.setup_logger'):
@@ -475,13 +511,21 @@ class TestModel(unittest.TestCase):
         """Test temp file is cleaned up even on write error."""
         os.makedirs(self.preset_path, exist_ok=True)
         os.makedirs(self.test_dir, exist_ok=True)  # Ensure output dir exists
-        config = {
-            "misc": [{"OutputLogAndReport": self.test_dir, "Webhook": "https://example.com"}],
-            "info": [{"AccountName": "alice", "Department": "VFX", "Email": "alice@test.com", "WorkSpace": "alice_ws"}]
-        }
-        config_path = os.path.join(self.preset_path, "config.json")
-        with open(config_path, 'w') as f:
-            json.dump(config, f)
+        csv_data = [
+            ["Miscellaneous", "", "", ""],
+            ["OutputLogAndReport", self.test_dir, "", ""],
+            ["Webhook", "https://example.com", "", ""],
+            ["Schedule Time", "18:30", "", ""],
+            ["Department", "VFX", "", ""],
+            ["", "", "", ""],
+            ["User info", "", "", ""],
+            ["AccountName", "UserName(Optional)", "Hostname(Optional)", "WorkspaceName", "Email"],
+            ["alice", "", "", "alice_ws", "alice@test.com"]
+        ]
+        config_path = os.path.join(self.preset_path, "config.csv")
+        with open(config_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerows(csv_data)
 
         with patch('src.model.PRESET_DIR', os.path.join(self.test_dir, "presets")):
             with patch('src.model.setup_logger'):

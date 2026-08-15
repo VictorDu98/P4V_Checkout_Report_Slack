@@ -1,7 +1,7 @@
 """Preset validator - validates presets before scheduling using real test rules."""
 
 import os
-import json
+import csv
 import logging
 from typing import List, Tuple, Optional
 from src.model import PresetConfig
@@ -22,14 +22,14 @@ class PresetValidator:
         """
         errors = []
 
-        # Rule 1: config.json exists
+        # Rule 1: config.csv exists
         if not self._check_config_exists(preset_path):
-            errors.append(f"Missing config.json in {preset_name}")
+            errors.append(f"Missing config.csv in {preset_name}")
             return False, errors
 
-        # Rule 2: valid JSON syntax
-        if not self._check_valid_json(preset_path):
-            errors.append(f"Invalid JSON in {preset_name}/config.json")
+        # Rule 2: valid CSV syntax
+        if not self._check_valid_csv(preset_path):
+            errors.append(f"Invalid CSV in {preset_name}/config.csv")
             return False, errors
 
         # Rule 3: required fields exist
@@ -55,18 +55,19 @@ class PresetValidator:
         return len(errors) == 0, errors
 
     def _check_config_exists(self, preset_path: str) -> bool:
-        """Check that config.json exists."""
-        config_path = os.path.join(preset_path, "config.json")
+        """Check that config.csv exists."""
+        config_path = os.path.join(preset_path, "config.csv")
         return os.path.exists(config_path)
 
-    def _check_valid_json(self, preset_path: str) -> bool:
-        """Check that config.json has valid JSON syntax."""
-        config_path = os.path.join(preset_path, "config.json")
+    def _check_valid_csv(self, preset_path: str) -> bool:
+        """Check that config.csv has valid CSV syntax."""
+        config_path = os.path.join(preset_path, "config.csv")
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
-                json.load(f)
+                csv.reader(f)
+                next(csv.reader(f))  # Try to read at least one row
             return True
-        except (json.JSONDecodeError, IOError):
+        except (IOError, StopIteration):
             return False
 
     def _check_required_fields(self, preset_path: str, preset_name: str) -> List[str]:
@@ -100,13 +101,19 @@ class PresetValidator:
             try:
                 preset_config.get_workspaces()
             except (KeyError, TypeError):
-                errors.append(f"{preset_name}: Missing 'WorkSpace' field in info entries")
+                errors.append(f"{preset_name}: Missing 'WorkspaceName' field in info entries")
 
-            # Check departments
+            # Check department
             try:
-                preset_config.get_departments()
+                preset_config.get_department()
             except (KeyError, TypeError):
-                errors.append(f"{preset_name}: Missing 'Department' field in info entries")
+                errors.append(f"{preset_name}: Missing 'Department' in misc section")
+
+            # Check schedule time
+            try:
+                preset_config.get_schedule_time()
+            except (KeyError, TypeError):
+                errors.append(f"{preset_name}: Missing 'Schedule Time' in misc section")
 
         except Exception as e:
             errors.append(f"{preset_name}: Unexpected error: {e}")
@@ -157,11 +164,11 @@ class PresetValidator:
         """Check that all user entries have required fields."""
         errors = []
         try:
-            config_path = os.path.join(preset_path, "config.json")
-            with open(config_path, 'r', encoding='utf-8') as f:
-                config = json.load(f)
+            preset_config = PresetConfig(preset_path, self.log)
+            preset_config.load()
 
-            for idx, user in enumerate(config.get('info', [])):
+            users = preset_config.config.get('info', [])
+            for idx, user in enumerate(users):
                 if 'Email' not in user:
                     errors.append(f"{preset_name}: User {idx} missing 'Email' field")
                 if 'AccountName' not in user:
